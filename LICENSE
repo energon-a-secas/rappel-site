@@ -19,3 +19,12 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+The MIT licence above covers the code. Data files under `data/` are not
+MIT: each carries its own `_licence` block naming its source and terms. JMdict
+and KANJIDIC2 material is CC BY-SA 4.0 from the Electronic Dictionary Research
+and Development Group, Tatoeba sentences are CC BY 2.0 FR, KanjiVG strokes are
+CC BY-SA 3.0, and the songs are public domain in Japan with the date of the
+author's death recorded per file. Those terms travel with the data.

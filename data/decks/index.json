@@ -1,0 +1,11 @@
+{
+"_licence": { "source": "JMdict / EDICT, Electronic Dictionary Research and Development Group", "url": "https://www.edrdg.org/edrdg/licence.html", "spdx": "CC-BY-SA-4.0", "derived": false, "id": "edrdg", "acknowledgement": "This site uses the JMdict/EDICT and KANJIDIC dictionary files. These files are the property of the Electronic Dictionary Research and Development Group, and are used in conformance with the Group's licence.", "links": [ "https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project", "https://www.edrdg.org/wiki/index.php/KANJIDIC_Project" ], "screen": "required", "note": "This catalog is an index. Each deck it names carries its own licence block.", "generated_by": "tools/build-decks.mjs", "generated_at": "2026-09-04" },
+"format": "neo-deck-index/1",
+"version": "2026-09-04",
+"decks": [
+{"id":"jp-first-words","file":"data/decks/jp-first-words.json","name":{"en":"First words","es":"Primeras palabras"},"note":"225 cards from 75 notes. CC-BY-SA-4.0.","version":"2026-09-04","notes":75,"cards":225,"licence":"CC-BY-SA-4.0","screen":"required","bytes":16108},
+{"id":"jp-grammar-words","file":"data/decks/jp-grammar-words.json","name":{"en":"Grammar words","es":"Palabras de gramática"},"note":"174 cards from 58 notes. CC-BY-SA-4.0.","version":"2026-09-04","notes":58,"cards":174,"licence":"CC-BY-SA-4.0","screen":"required","bytes":13682},
+{"id":"jp-kanji-grade1","file":"data/decks/jp-kanji-grade1.json","name":{"en":"The first eighty kanji","es":"Los primeros ochenta kanji"},"note":"240 cards from 80 notes. CC-BY-SA-4.0.","version":"2026-09-04","notes":80,"cards":240,"licence":"CC-BY-SA-4.0","screen":"required","bytes":17474},
+{"id":"jp-sentences-basic","file":"data/decks/jp-sentences-basic.json","name":{"en":"Short sentences","es":"Frases cortas"},"note":"168 cards from 84 notes. CC-BY-2.0-FR.","version":"2026-09-04","notes":84,"cards":168,"licence":"CC-BY-2.0-FR","screen":"required","bytes":16430}
+]
+}

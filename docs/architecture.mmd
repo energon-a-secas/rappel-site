@@ -1,0 +1,85 @@
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#0f172a"
+    primaryTextColor: "#e2e8f0"
+    primaryBorderColor: "#14b8a6"
+    lineColor: "#2dd4bf"
+    secondaryColor: "#1e293b"
+    tertiaryColor: "#1e293b"
+    clusterBkg: "#f0fdfa"
+    clusterBorder: "#99f6e4"
+    edgeLabelBackground: "#ccfbf1"
+    mainBkg: "#0f172a"
+    nodeBorder: "#14b8a6"
+    titleColor: "#134e4a"
+    fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif"
+    fontSize: "13px"
+---
+flowchart TB
+    User([Visitor]) --> HTML["index.html\nLibrary, session, browse, stats, settings"]
+    Host([Host site, e.g. Runcible]) -->|"iframe ?embed=1&src= or &deck= or #d="| HTML
+
+    subgraph Shell["ES modules, zero build"]
+        HTML --> app["app.js\nEntry point, 13 lines"]
+        app --> boot["boot.js\nRead the URL, probe storage, resolve the deck, render"]
+        boot --> state["state.js\nShared state, four Persist kit stores"]
+        boot --> events["events.js\nEvery listener, delegated on data-act"]
+        boot --> keys["keys.js\nSpace flips, 1 to 4 grade, via NeoKeys"]
+        boot --> render["render.js\nLibrary, browse, stats, settings, attribution"]
+        render --> rsession["render-session.js\nOne card, a flip, four ratings"]
+        render --> stats["stats.js\nHeatmap, retention, streak"]
+        stats --> viz["viz.js\nViz kit, vendored"]
+        events --> modal["modal.js\nNative dialog helper"]
+    end
+
+    subgraph Engine["Review engine"]
+        events --> session["session.js\nQueue, grade, three DOM events"]
+        session --> scheduler["scheduler.js\nLearning steps, lapses, absolute due"]
+        scheduler --> fsrs["fsrs.js\nFSRS-6 arithmetic, 21 defaults"]
+        session --> deck["deck.js\nCard expansion, rendering, distractors"]
+        session --> transforms["transforms.js\nRomaji reader: live half and settle half"]
+        transforms -.lazy import.-> wanakana["vendor/wanakana.js\n5.3.1, MIT"]
+    end
+
+    subgraph Decks["Getting a deck in"]
+        boot --> deckload["deck-load.js\nOne path in: namespace, validate, headroom"]
+        events --> import["import.js\nTSV, CSV, JSON, Anki header dialect"]
+        events --> export["export.js\nDeck JSON, Anki TSV, ledger JSON"]
+        deckload --> validate["validate-deck.js\nneo-deck/1, neo-ledger/1, neo-deck-index/1"]
+        import --> validate
+        deckload --> origin["origin.js\nAllowlist, ?src= rule, ext: namespacing"]
+    end
+
+    subgraph Ledger["The ledger, split by lifetime"]
+        session --> ledgerlog["ledger-log.js\nAppend-only review log, never throws"]
+        ledger["ledger.js\nBuild and restore one neo-ledger/1 document"] --> ledgerlog
+        ledger --> validate
+        export --> ledger
+        state <-->|"rappel:ledger:v1 · rappel:decks:v1\nrappel:prefs:v1 · rappel:session:v1"| LS[("localStorage\nvia the Persist kit")]
+        ledgerlog <-->|"db rappel, store reviews\nkeyPath deck + t"| IDB[("IndexedDB")]
+    end
+
+    subgraph Embed["Embed bridge, neo-rappel-embed/1"]
+        boot --> embed["embed.js\nreadConfig, chrome strip, postMessage both ways"]
+        embed --> origin
+        embed --> ledger
+        session -.rappel-answer, session-start, session-end.-> embed
+    end
+    embed <-->|"postMessage, v: 1, never '*'\nready, due, answer, progress, error\nhello, start, export, restore, theme"| Host
+
+    subgraph Account["Account, dormant"]
+        boot --> account["account.js\nMerges a pulled ledger, pushes deltas"]
+        account --> sync["sync.js\nBrokered Convex client, no-ops without a Clerk key"]
+        sync -.only with a clerk-publishable-key meta.-> Convex[("Convex\ncards · reviews · settings")]
+    end
+
+    Catalog[("data/decks/\nindex.json + 4 generated decks\nCC BY-SA 4.0 and CC BY 2.0 FR")] --> deckload
+    Tools["tools/\ntest-scheduler · test-origin · test-validate\ntest-transforms · check-limits · validate-deck.mjs"] -.make validate.-> fsrs
+    Tools -.-> origin
+    Tools -.-> validate
+    Tools -.-> Catalog
+
+    HTML --> Kits["Neorgon Header, Footer, Beacon, Keys, Persist kits\nvendored, never edited here"]
+    HTML --> CDN[("cdn.neorgon.org\nbase.css tokens, season.css")]

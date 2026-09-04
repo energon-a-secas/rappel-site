@@ -1,0 +1,354 @@
+# Rappel
+
+> Spaced repetition flashcards at https://rappel.neorgon.com/. Loads a deck from
+> one JSON document, schedules it with FSRS-6, and keeps the review ledger in
+> the visitor's own browser. Any site can embed a deck in an iframe and read the
+> answers back over postMessage. No account, no server, nothing uploaded.
+
+## Writing a deck file
+
+Produce ONE JSON object in the `neo-deck/1` format. Minimal viable deck:
+
+    {
+      "format": "neo-deck/1",
+      "id": "es-core-50",
+      "version": "2026-09-04",
+      "name": "Spanish core 50",
+      "lang": { "front": "es", "back": "en" },
+      "fields": ["Word", "Meaning"],
+      "templates": [
+        { "id": "recognition", "kind": "basic", "skill": "es.vocab.read",
+          "front": "{{Word}}", "back": "{{Meaning}}" }
+      ],
+      "notes": [
+        { "id": "n_0001", "f": { "Word": "el perro", "Meaning": "the dog" },
+          "tags": ["animals"] }
+      ]
+    }
+
+Top-level fields:
+
+- format (required) "neo-deck/1"
+- id (required) starts with a letter or digit, then letters, digits, dot, dash,
+  underscore. It is what the review ledger is keyed by, so never change it on
+  an existing deck
+- version (required) a YYYY-MM-DD date, bumped on any content change
+- name (required) a string, or an { "en": ..., "es": ... } object. English is
+  the fallback, then Spanish. `"es": null` means "not translated"
+- lang (required) { "front": "es", "back": "en" }
+- licence (SPDX id) plus attribution (the exact on-screen wording) plus
+  screen ("required" or "none"). If licence starts with CC-BY then attribution
+  and screen: "required" are mandatory, and the wording is rendered below the
+  review area on every screen that shows the deck, in the embed too
+- source (URL) where the licence text lives, linked next to the attribution
+- media_base a RELATIVE path, no leading slash, no scheme and no ".." segment
+- fields (required) the field names, unique, in order
+- templates (required) see below
+- notes (required) see below
+
+### Templates
+
+`kind` is one of four and nothing else. There is no template language: `{{Field}}`
+substitution only. No conditionals, no filters, no `{{FrontSide}}`, no
+`{{hint:}}`, no `{{tts:}}`. A literal `<br>` in a template becomes a line break;
+every other piece of markup is escaped.
+
+- basic: `front` and `back`, both `{{Field}}` strings
+- typed: `answer_field` (a declared field), `front`, `back`, optional
+  `transform` ("kana" or "kana-katakana"), optional `compare`
+- cloze: `text_field` (a declared field holding `{{c1::text}}` or
+  `{{c1::text::hint}}` markers)
+- choice: `answer_field`, optional `distractors` ("siblings", the default, or
+  "sample-from-deck"), optional `count` from 2 to 8, default 4. Siblings are
+  notes sharing a tag with the card's note; when there are too few, the rest
+  are sampled from the deck so the card is still answerable
+
+Every template should carry `skill`, a dotted string such as
+`kana.hiragana.read`. It is what an embedding host receives on every answer, so
+a template with no skill makes the embed contract useless to that host. The
+validator warns on a missing skill and does not refuse the deck. A note may
+carry its own `skill`, which wins over the template's for that note's cards.
+
+`compare` is a pipe separated token list applied in order, default `trim|casefold`:
+`trim`, `casefold`, `strip-accents`, `collapse-space`, `kana` (both sides are
+converted to hiragana before comparing).
+
+`transform` converts romaji as the learner types (wanakana, vendored): a
+trailing `n` is held back so `na` stays reachable, `nn` before a consonant is
+one `n`, and the box is settled once at submit before `compare` runs. So
+`onna` grades as おんな and `shinbun` as しんぶん.
+
+### Notes and card identity
+
+**A card is `noteId + ":" + templateId`, a string.** It is never an array index
+and never a generated integer, which is what lets a reader re-download an edited
+deck without losing a single review. A cloze note expands to one card per
+distinct marker, so `{{c1::}}` and `{{c2::}}` in note `n_0001` under template
+`gap` are `n_0001:gap:1` and `n_0001:gap:2`. A note id therefore may not
+contain a colon.
+
+Extending a deck therefore KEEPS every existing note id. Renumbering notes
+discards the reader's progress on every one of them.
+
+`f` holds the field values, all strings, and every key must be a declared field.
+`tags` is optional and is what "siblings" distractors are drawn from. `templates`
+is optional and limits a note to a subset of the deck's templates.
+
+### Media
+
+A filename reference, never inline base64, and Anki's two spellings are kept
+verbatim so a converted deck needs no field rewriting:
+
+    "Audio": "[sound:perro.mp3]"
+    "Picture": "<img src=\"perro.png\">"
+
+Both resolve against `media_base`. `[sound:]` renders as a Play button and
+`<img>` as an image. An absolute URL, a root path or a `..` segment in either is
+dropped rather than fetched. Every other piece of field text is escaped, so a
+deck cannot inject markup into the page that reads it.
+
+### Where a fetched deck is stored
+
+A deck fetched from `?src=` on an origin other than `neorgon.com` or one of its
+subdomains is stored, and reported in every message, as
+
+    ext:<first 12 hex of SHA-256 of the src URL>:<deck.id>
+
+so a third-party document claiming `"id": "jp-first-words"` cannot merge into
+the reader's progress on the built-in deck of that name. Built-in decks and
+decks served from `*.neorgon.com` keep their plain `id`. A host embedding its
+own deck should expect the `ext:` form in `deckId`.
+
+## Other input formats
+
+Import also reads TSV and CSV using Anki's own header dialect verbatim, so a
+file exported from Anki loads unchanged and a file exported from here imports
+into Anki:
+
+    #separator:tab
+    #html:false
+    #notetype:Basic
+    #deck:Spanish core 50
+    #columns:GUID	Front	Back	Tags
+    #guid column:1
+    #tags column:4
+
+`#guid column` is what lets a person edit the file and re-import it without
+duplicating notes (the value is kept as the note id after stripping anything
+outside letters, digits, dot, dash and underscore). Without `#columns` the
+columns are called Front, Back, Field 3 and so on; without `#separator` the
+delimiter is detected from the first line. A bare two-column paste with no
+header block works. A row whose first column is empty is skipped. The imported
+deck gets `licence: "unspecified"`, `screen: "none"`, today's date as its
+version and a slug of `#deck` as its id.
+
+JSON import accepts a `neo-deck/1` document, an array of objects (the union of
+their keys becomes the field list), or an array of two-item arrays (Front and
+Back).
+
+**`.apkg` is not supported and will not be.** The modern inner collection is
+zstd compressed and `DecompressionStream("zstd")` exists only in Firefox 138 and
+later, and the SQLite reader that would be needed is 0.69 MB of third-party
+runtime. Export from Anki as a text file instead.
+
+## The scheduler
+
+FSRS-6 with the 21 published default parameters, transcribed from `fsrs-rs`
+6.6.2. Ratings are 1 Again, 2 Hard, 3 Good, 4 Easy.
+
+**Hard is a passing grade.** It means you recalled the answer and it took
+effort. Pressing Hard when you did not recall the answer at all makes every
+future interval too long. Again is the button for a failure.
+
+There is no parameter optimizer here: fitting parameters is gradient descent
+over the entire review history and needs a build step this site does not have.
+Settings accepts a pasted array of 17, 19 or 21 numbers, migrated the way
+`fsrs-rs` migrates a short one, and checked for length and finiteness only.
+
+Learning steps default to 60 and 600 seconds, relearning to 600, and the study
+day rolls over at 04:00 local. Every answer writes an absolute due timestamp, so
+closing the tab mid-step loses nothing. A review session shows learning cards,
+then due cards, then up to 20 new cards (or `limit`, when given).
+
+## Storage, and what is honest about it
+
+- The card map (stability, difficulty, due date, reps, lapses per card) is in
+  `localStorage` under `rappel:ledger:v1`. Rappel refuses to add a deck that
+  would push it past 1.5 MiB and says so with the number.
+- The review log is append-only in IndexedDB, database `rappel`, store
+  `reviews`, keyed by deck and timestamp. It is not in localStorage because
+  writing it there would cost a full rewrite of the whole history on every
+  single answer.
+- Decks you import are in `localStorage` under `rappel:decks:v1`. Scheduler
+  settings are under `rappel:prefs:v1` and the in-progress session under
+  `rappel:session:v1`, so a closed tab resumes where it was.
+- Nothing is uploaded. Export writes both halves into one `neo-ledger/1`
+  document, and Restore takes one back in, merging per card by whichever review
+  is newer. The `scheduler` block in an imported ledger is validated and not
+  applied: a document never sets a reader's memory parameters.
+
+## Embedding (iframe)
+
+Any site can embed a deck. The contract version is `neo-rappel-embed/1`.
+
+    <iframe src="https://rappel.neorgon.com/?embed=1&mode=review&limit=20&src=https%3A%2F%2Fexample.com%2Fdeck.json"
+      width="100%" height="640" loading="lazy" style="border:0"
+      title="Spanish core 50 · Rappel"></iframe>
+
+URL parameters:
+
+- `embed=1` strips the chrome to a slim bar with an "Open in Rappel" link,
+  preserving the other parameters in the escape URL except `embed` and
+  `ledger`, so the top-level page persists normally
+- `deck=<id>` selects a deck Rappel already ships
+- `src=<https URL>` fetches a `neo-deck/1` document, which needs CORS. Plain
+  `http://localhost` is accepted only when the engine itself is on localhost
+- `#d=<base64url(deck json)>` carries the deck in the fragment instead, UTF-8
+- `mode=review | cram | browse`, default `review`. **`cram` writes nothing to
+  the ledger**: it runs every card, shuffled, and schedules none of them
+- `limit=<N>` caps the session. A value that is not a finite positive number is
+  discarded
+- `ledger=engine | host`, default `engine`. `host` makes the frame fully
+  in-memory and hands you the whole ledger on `rappel:progress`. See the
+  section on `?ledger=` below
+- `lang=en | es`
+- `theme=<name>` applies a fleet theme
+
+Exactly one of `deck`, `src` or `#d=` must be present. Zero is
+`rappel:error { code: "no-deck" }`. More than one takes them in that order and
+names the ignored ones on the console. In embed mode a session starts on load;
+`mode=browse` lists the cards instead.
+
+### Messages the engine sends you
+
+Every message is `{ v: 1, type, ... }` and is posted to your origin (the
+referrer's origin), never `*`. With no referrer the engine posts nothing.
+**Ignore any message whose `v` you do not recognise.**
+
+- `rappel:ready` `{ deckId, deckVersion, name, total, due, new, ledger }`.
+  `ledger` is `"engine"` or `"ephemeral"`. Fires on load once a deck resolved,
+  and again every time you send `rappel:hello`
+- `rappel:due` `{ deckId, due, new, learning, total, nextDueAt }`. On ready,
+  after every session end, and after a restore lands. `nextDueAt` is a
+  timestamp in ms or null
+- `rappel:session-start` `{ deckId, sessionId, queued }`
+- `rappel:answer` `{ deckId, sessionId, cardId, itemId, skill, grade, correct, ms }`,
+  one per graded card, in cram mode too. `cardId` is `noteId:templateId`;
+  `itemId` is `deckId + ":" + noteId`, one per note rather than per card, so
+  a recognition card and a recall card of the same word share it. `grade` is
+  1 to 4. `correct` is whether the typed or picked answer matched for a typed
+  or choice card (after the transform's settle step and `compare`), and
+  `grade >= 2` otherwise. `ms` is time from showing the card to grading it
+- `rappel:session-end` `{ deckId, sessionId, answered, again, hard, good, easy, ms, due, new }`
+- `rappel:progress` `{ deckId, format: "neo-ledger/1", ledger }`. Sent in reply
+  to `rappel:export`, and under `ledger=host` after every answer and every
+  session end, log included
+- `rappel:error` `{ code, message }`. Codes: `no-deck`, `deck-fetch-failed`,
+  `deck-invalid`, `storage-unavailable`, `origin-refused`. A `rappel:restore`
+  whose document fails validation is reported as `deck-invalid` with the
+  validator's message. `storage-unavailable` is reserved: the current engine
+  reports a failed storage probe as `ledger: "ephemeral"` on `rappel:ready`
+  rather than as an error
+- `rappel:resize` `{ height }`
+
+**If you stop receiving `rappel:answer`, nothing looks broken.** The frame keeps
+showing a working deck and you quietly stop recording anything. That is why
+every message carries a version and why you should treat a long silence after
+`rappel:session-start` as a fault rather than as an idle learner.
+
+### Messages you can send the engine
+
+Every inbound message must carry `v: 1` and a `type` starting with `rappel:`;
+anything else is dropped without a reply.
+
+- `rappel:hello` `{ v: 1 }`. The engine re-emits `rappel:ready`. **Send this on
+  the iframe's load event.** The engine can become ready before you attach your
+  listener, and without this your panel is intermittently blank
+- `rappel:start` `{ limit?, mode? }`. Starts or restarts a session; `mode`
+  defaults to `review`
+- `rappel:export` `{ log?: boolean }`. `log` defaults false, because a
+  100,000-entry log is 8 MiB of postMessage
+- `rappel:restore` `{ format: "neo-ledger/1", ledger, strategy: "merge" | "replace" }`
+- `rappel:theme` `{ theme }`. A name of up to 32 letters, digits, `_` or `-`
+
+`rappel:restore` is the one message that can write. It is accepted from
+`neorgon.com` and its subdomains over https (and from `localhost` when the
+engine itself is on `localhost`). From any other origin it is accepted only
+when the frame is not persisting, that is under `ledger=host` or after a
+failed storage probe, where it writes nothing but memory; otherwise it is
+refused with `rappel:error { code: "origin-refused" }`. An unlisted origin can
+never cause a write to `rappel.neorgon.com`'s persistent storage.
+
+    const RAPPEL = 'https://rappel.neorgon.com';
+    window.addEventListener('message', (e) => {
+      if (e.origin !== RAPPEL) return;
+      const m = e.data;
+      if (!m || m.v !== 1) return;
+      if (m.type === 'rappel:ready')  { showDue(m.due); if (m.ledger === 'ephemeral') warnNotSaved(); }
+      if (m.type === 'rappel:answer') { record(m.itemId, m.skill, m.correct, m.ms); }
+    });
+    frame.addEventListener('load', () => {
+      frame.contentWindow.postMessage({ v: 1, type: 'rappel:hello' }, RAPPEL);
+    });
+
+### What `rappel:restore` does with the document
+
+- It is validated as `neo-ledger/1` first: `format`, `exported` (a timestamp
+  in ms), `origin` (the exporting origin), a `scheduler` block with `name:
+  "fsrs"`, `version: 6`, 21 finite `w`, `desired_retention` between 0.5 and 1,
+  `maximum_interval` (a whole number of days, at least 1), `learn_steps`,
+  `relearn_steps`, `day_start_hour`, and `decks` keyed by deck
+  id with a `cards` map keyed by `noteId:templateId`. The document you get on
+  `rappel:progress` already has this shape; send it back as it came
+- `merge` (the default) is last-write-wins per card by `lr`, the last review
+  timestamp: a card lands only when it is absent here or its `lr` is strictly
+  newer, so two devices reviewing different cards lose nothing. `replace`
+  drops the local card map first
+- `log` entries are appended to the review log, keyed by deck and timestamp, so
+  sending the same document twice is a no-op rather than a duplicate. A frame
+  that cannot persist (`ledger=host`, or a failed probe) ignores the log half of
+  a restore and merges only the card rows, into memory
+- The `scheduler` block is validated and never applied. The frame's own
+  parameters are untouched by a restore
+- There is no dedicated acknowledgement. After a restore lands the frame
+  re-renders and posts `rappel:due`; a rejected one posts `rappel:error` with
+  code `deck-invalid` and the first validation message
+
+### `?ledger=`: where the ledger lives in an embed, stated honestly
+
+By default (`ledger=engine`) the frame writes to `rappel.neorgon.com`'s own
+storage, so a person embedding a deck on a `neorgon.com` site shares one ledger
+with standalone Rappel. That is a **same-site guarantee only**. Browsers
+partition third-party storage by the top-level site, so a deck embedded on your
+own domain gets its own partition and its own ledger, and Safari may partition
+even the same-site case. The engine probes both `localStorage` and IndexedDB at
+boot, before anything is written or posted, and tells you which world you are
+in on `rappel:ready`: `"engine"` when it can persist, `"ephemeral"` when it
+cannot.
+
+`ledger=host` makes the frame ephemeral on purpose:
+
+- nothing is written to `localStorage` or IndexedDB, not the card map, not the
+  log, not the settings, not the session
+- `rappel:ready` reports `ledger: "ephemeral"`
+- `rappel:progress` fires with the full log after every answer and every
+  session end, because on unload the frame's memory is gone
+- `rappel:restore` is accepted from any origin, since it can only reach memory
+- the "Open in Rappel" link drops `ledger` from the URL, so the top-level page
+  persists normally
+
+If progress matters to you, use `?ledger=host`, keep the latest
+`rappel:progress` document yourself, and push it back with `rappel:restore` on
+the next load (after `rappel:ready`, when the deck has resolved). And leave the
+"Open in Rappel" link in place: the top-level origin is the one path that
+always works.
+
+## Keyboard
+
+Space shows the answer. 1 to 4 grade it. `?` opens the full shortcut sheet, `H`
+hides the chrome (standalone only; there is no chrome to hide in an embed), `G`
+jumps to another Neorgon site.
+
+## Related
+
+- The Neorgon fleet index: https://neorgon.com/llms.txt

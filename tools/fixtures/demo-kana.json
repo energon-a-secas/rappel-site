@@ -1,0 +1,28 @@
+{
+  "format": "neo-deck/1",
+  "id": "demo-kana-vowels",
+  "version": "2026-09-04",
+  "name": { "en": "Demo, the five hiragana vowels", "es": "Demo, las cinco vocales en hiragana" },
+  "lang": { "front": "ja", "back": "en" },
+  "licence": "CC-BY-SA-4.0",
+  "screen": "required",
+  "attribution": "This site uses the JMdict/EDICT and KANJIDIC dictionary files. These files are the property of the Electronic Dictionary Research and Development Group, and are used in conformance with the Group's licence.",
+  "source": "https://www.edrdg.org/edrdg/licence.html",
+  "fields": ["Kana", "Romaji", "Row"],
+  "templates": [
+    { "id": "recognition", "kind": "basic", "skill": "kana.hiragana.read",
+      "front": "{{Kana}}", "back": "{{Romaji}}" },
+    { "id": "recall", "kind": "typed", "skill": "kana.hiragana.write",
+      "answer_field": "Kana", "front": "{{Romaji}}", "back": "{{Kana}}",
+      "transform": "kana", "compare": "trim|kana" },
+    { "id": "pick", "kind": "choice", "skill": "kana.hiragana.read",
+      "answer_field": "Romaji", "distractors": "siblings", "count": 4 }
+  ],
+  "notes": [
+    { "id": "n_a", "tags": ["vowel"], "f": { "Kana": "あ", "Romaji": "a", "Row": "vowels" } },
+    { "id": "n_i", "tags": ["vowel"], "f": { "Kana": "い", "Romaji": "i", "Row": "vowels" } },
+    { "id": "n_u", "tags": ["vowel"], "f": { "Kana": "う", "Romaji": "u", "Row": "vowels" } },
+    { "id": "n_e", "tags": ["vowel"], "f": { "Kana": "え", "Romaji": "e", "Row": "vowels" } },
+    { "id": "n_o", "tags": ["vowel"], "f": { "Kana": "お", "Romaji": "o", "Row": "vowels" } }
+  ]
+}

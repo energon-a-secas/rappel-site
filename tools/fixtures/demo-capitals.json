@@ -1,0 +1,32 @@
+{
+  "format": "neo-deck/1",
+  "id": "demo-capitals",
+  "version": "2026-09-04",
+  "name": { "en": "Demo, world capitals", "es": "Demo, capitales del mundo" },
+  "lang": { "front": "en", "back": "en" },
+  "licence": "MIT",
+  "screen": "none",
+  "fields": ["Country", "Capital", "Region", "Sentence"],
+  "templates": [
+    { "id": "recognition", "kind": "basic", "skill": "geo.capital.read",
+      "front": "{{Country}}", "back": "{{Capital}}" },
+    { "id": "recall", "kind": "typed", "skill": "geo.capital.write",
+      "answer_field": "Capital", "front": "Capital of {{Country}}", "back": "{{Capital}}",
+      "compare": "trim|casefold|strip-accents" },
+    { "id": "pick", "kind": "choice", "skill": "geo.capital.read",
+      "answer_field": "Capital", "distractors": "siblings", "count": 4 },
+    { "id": "gap", "kind": "cloze", "skill": "geo.capital.read", "text_field": "Sentence" }
+  ],
+  "notes": [
+    { "id": "n_0001", "tags": ["america"], "f": { "Country": "Peru", "Capital": "Lima", "Region": "America", "Sentence": "The capital of Peru is {{c1::Lima}}, on the {{c2::Pacific}} coast." } },
+    { "id": "n_0002", "tags": ["america"], "f": { "Country": "Chile", "Capital": "Santiago", "Region": "America", "Sentence": "The capital of Chile is {{c1::Santiago}}." } },
+    { "id": "n_0003", "tags": ["america"], "f": { "Country": "Bolivia", "Capital": "Sucre", "Region": "America", "Sentence": "The constitutional capital of Bolivia is {{c1::Sucre}}." } },
+    { "id": "n_0004", "tags": ["america"], "f": { "Country": "Ecuador", "Capital": "Quito", "Region": "America", "Sentence": "The capital of Ecuador is {{c1::Quito}}." } },
+    { "id": "n_0005", "tags": ["europe"], "f": { "Country": "Portugal", "Capital": "Lisbon", "Region": "Europe", "Sentence": "The capital of Portugal is {{c1::Lisbon}}." } },
+    { "id": "n_0006", "tags": ["europe"], "f": { "Country": "Hungary", "Capital": "Budapest", "Region": "Europe", "Sentence": "The capital of Hungary is {{c1::Budapest}}." } },
+    { "id": "n_0007", "tags": ["europe"], "f": { "Country": "Norway", "Capital": "Oslo", "Region": "Europe", "Sentence": "The capital of Norway is {{c1::Oslo}}." } },
+    { "id": "n_0008", "tags": ["asia"], "f": { "Country": "Nepal", "Capital": "Kathmandu", "Region": "Asia", "Sentence": "The capital of Nepal is {{c1::Kathmandu}}." } },
+    { "id": "n_0009", "tags": ["asia"], "f": { "Country": "Vietnam", "Capital": "Hanoi", "Region": "Asia", "Sentence": "The capital of Vietnam is {{c1::Hanoi}}." } },
+    { "id": "n_0010", "tags": ["africa"], "f": { "Country": "Ghana", "Capital": "Accra", "Region": "Africa", "Sentence": "The capital of Ghana is {{c1::Accra}}." } }
+  ]
+}

@@ -1,0 +1,4 @@
+# Convex writes these from the schema and the function signatures on every
+# push. memes-site ignores them at its repo root; this project's root
+# .gitignore is owned by another workstream, so the rule lives here instead.
+_generated/

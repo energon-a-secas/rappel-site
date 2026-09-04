@@ -1,0 +1,15 @@
+{
+  "name": "rappel-site",
+  "version": "1.0.0",
+  "description": "Drill flashcards with free spaced repetition: build or import decks, embed one in any site, and keep the review ledger in your own hands",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "convex": "convex dev",
+    "test": "node --test convex/merge.test.ts"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "convex": "^1.43.0"
+  }
+}

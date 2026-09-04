@@ -15,8 +15,10 @@
  */
 
 :root {
-  /* Per-site identity: set to this site's hub card accent (PROJECTS.md section 4) */
-  --accent: #0063e5;
+  /* Per-site identity: this site's hub card accent (PROJECTS.md section 4).
+     Teal: a study tone, and the one identity knob this site owns. */
+  --accent: #14b8a6;
+  --accent-bright: #2dd4bf;
 
   /* Site extras base.css does not define */
   --surface-toast: #1a1730;
@@ -274,7 +276,8 @@ nav {
 }
 .btn--primary {
   background: var(--accent);
-  color: #fff;
+  /* White on this teal is 2.49:1. The page ground as ink reads at over 8:1. */
+  color: var(--bg, #040714);
   border-color: transparent;
 }
 .btn--primary:hover { background: var(--accent-bright); }
@@ -677,3 +680,221 @@ button:active,
     max-width: none;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════
+ * Rappel
+ *
+ * Everything below is prefixed .rp- and belongs to this site. No header or
+ * footer kit selector appears here: those kits own their own CSS and a
+ * site-local override of them is how the fleet drifts.
+ * ══════════════════════════════════════════════════════════════ */
+
+body {
+  /* The viz heatmap ramp defaults to blue. Retint it to the site accent, on
+     body rather than :root so it wins over viz.css, which loads later. */
+  --viz-heat-1: color-mix(in srgb, var(--accent) 22%, transparent);
+  --viz-heat-2: color-mix(in srgb, var(--accent) 44%, transparent);
+  --viz-heat-3: color-mix(in srgb, var(--accent) 68%, transparent);
+  --viz-heat-4: color-mix(in srgb, var(--accent) 95%, transparent);
+}
+
+.rp-visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+.nav-link.is-active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.rp-note {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Deck library ─────────────────────────────────────────── */
+.rp-deck__head { display: flex; align-items: baseline; gap: var(--space-3); }
+.rp-deck__name { font-size: var(--text-lg); margin: 0; }
+.rp-deck__version { color: var(--text-muted); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+.rp-deck__counts {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--space-2); margin: var(--space-3) 0;
+}
+.rp-deck__next { color: var(--text-muted); font-size: var(--text-sm); }
+.rp-pill {
+  padding: 2px 10px; border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  font-size: var(--text-xs); font-variant-numeric: tabular-nums;
+}
+.rp-pill--due { border-color: color-mix(in srgb, var(--accent) 55%, transparent); color: var(--accent-bright); }
+.rp-pill--new { border-color: var(--border-strong); }
+.rp-empty h3 { margin-bottom: var(--space-2); }
+.rp-empty p { color: var(--text-secondary); margin: 0; max-width: 60ch; }
+
+/* Scheduling state arrived without the reviews behind it: sync carries the
+   card map and never the log (C12 A4), and an export leaves the log out by
+   default. Rendered as a statement with a route out of it, never as a zero. */
+.rp-elsewhere { border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+.rp-elsewhere p + p { margin-top: var(--space-3); }
+.rp-elsewhere .toolbar { margin-top: var(--space-4); }
+
+/* ── Review surface ───────────────────────────────────────── */
+.rp-session__bar {
+  display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+}
+.rp-session__bar .section__title { margin: 0; flex: 1 1 auto; }
+.rp-session__count { color: var(--text-muted); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+
+.rp-progress {
+  height: 4px; border-radius: 999px; background: var(--surface-2);
+  margin: var(--space-3) 0 var(--space-4); overflow: hidden;
+}
+.rp-progress__fill {
+  height: 100%; background: var(--accent);
+  transition: width var(--dur) var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) { .rp-progress__fill { transition: none; } }
+
+.rp-card { display: flex; flex-direction: column; gap: var(--space-4); min-height: 180px; }
+.rp-face { font-size: clamp(1.4rem, 4vw, 2.1rem); line-height: 1.35; white-space: pre-wrap; word-break: break-word; }
+.rp-face--back { color: var(--accent-bright); }
+.rp-rule { border: 0; border-top: 1px solid var(--border); margin: 0; }
+
+.rp-cloze {
+  padding: 0 .4em; border-radius: var(--radius-sm);
+  background: var(--surface-2); color: var(--text-muted);
+}
+.rp-cloze--shown { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent-bright); }
+
+.rp-media-img { max-width: 100%; height: auto; border-radius: var(--radius-sm); }
+.rp-media-audio {
+  font: inherit; font-size: var(--text-sm); padding: 4px 12px;
+  border-radius: 999px; border: 1px solid var(--border-strong);
+  background: var(--surface-1); color: var(--text-primary); cursor: pointer;
+}
+
+.rp-typed {
+  width: 100%; font: inherit; font-size: var(--text-xl);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius); border: 1px solid var(--border-strong);
+  background: var(--surface-1); color: var(--text-primary);
+}
+.rp-typed:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+
+.rp-choices { display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.rp-choice { justify-content: flex-start; gap: var(--space-3); text-align: left; }
+.rp-choice__key {
+  display: inline-grid; place-items: center; width: 1.6em; height: 1.6em;
+  border-radius: var(--radius-sm); background: var(--surface-2);
+  font-size: var(--text-xs); font-variant-numeric: tabular-nums;
+}
+
+.rp-verdict { margin: 0; font-size: var(--text-sm); }
+.rp-verdict--hit { color: #34d399; }
+.rp-verdict--miss { color: #fbbf24; }
+
+/* ── The four ratings ─────────────────────────────────────── */
+.rp-grades {
+  display: grid; gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin-top: var(--space-4);
+}
+.rp-grade {
+  display: grid; gap: 2px; justify-items: start; text-align: left;
+  height: auto; padding: var(--space-3) var(--space-4);
+  background: var(--surface-1); border: 1px solid var(--border-strong); color: var(--text-primary);
+}
+.rp-grade kbd {
+  font: inherit; font-size: var(--text-xs); padding: 0 6px; border-radius: 4px;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text-muted);
+}
+.rp-grade__name { font-weight: 600; }
+.rp-grade__gloss { font-size: var(--text-xs); color: var(--text-secondary); font-weight: 400; }
+.rp-grade__eta { font-size: var(--text-xs); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.rp-grade--again { border-color: color-mix(in srgb, var(--danger) 55%, transparent); }
+.rp-grade--hard  { border-color: color-mix(in srgb, #fbbf24 45%, transparent); }
+.rp-grade--good  { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.rp-grade--easy  { border-color: color-mix(in srgb, #34d399 45%, transparent); }
+.rp-grade:hover { background: var(--surface-2); }
+.rp-grade__warn {
+  margin: var(--space-3) 0 0; font-size: var(--text-sm); color: var(--text-muted); max-width: 70ch;
+}
+.rp-flip-row { margin-top: var(--space-4); }
+.rp-summary { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+/* ── Browse table ─────────────────────────────────────────── */
+.rp-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+.rp-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.rp-table th, .rp-table td { padding: var(--space-2) var(--space-3); text-align: left; border-bottom: 1px solid var(--border-subtle); }
+.rp-table th { color: var(--text-muted); font-weight: 600; position: sticky; top: 0; background: var(--bg); }
+.rp-table tbody tr:hover { background: var(--surface-1); }
+.rp-cell-front { max-width: 34ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rp-num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── Forms ────────────────────────────────────────────────── */
+.rp-field { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.rp-field > span { min-width: 15ch; color: var(--text-secondary); font-size: var(--text-sm); }
+.rp-field--block { align-items: flex-start; }
+.rp-field input[type="text"], .rp-field input[type="number"], .rp-field textarea {
+  flex: 1 1 220px; font: inherit; padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+  background: var(--surface-1); color: var(--text-primary);
+}
+.rp-field textarea { min-height: 5em; resize: vertical; font-family: var(--mono, ui-monospace, Menlo, monospace); font-size: var(--text-sm); }
+.rp-field input[type="range"] { flex: 1 1 180px; accent-color: var(--accent); }
+.rp-field output { font-variant-numeric: tabular-nums; min-width: 4ch; }
+.rp-check { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--text-secondary); }
+.rp-check input { accent-color: var(--accent); }
+.rp-radios { border: 0; padding: 0; margin: 0; display: grid; gap: var(--space-2); }
+.rp-radios legend { color: var(--text-muted); font-size: var(--text-sm); padding: 0 0 var(--space-2); }
+
+/* ── The licence acknowledgement ──────────────────────────── */
+.neo-attrib {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-4);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  max-width: 80ch;
+}
+.neo-attrib__line { margin: 0 0 var(--space-2); }
+.neo-attrib a { color: var(--text-secondary); }
+
+/* ── Embed mode ───────────────────────────────────────────── */
+/* Chrome down to one bar with an escape link, the shape proven in
+   projects/proctor-site/js/app.js:25-37. */
+.rp-embed-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: 6px var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-1);
+  font-size: var(--text-xs); color: var(--text-muted);
+}
+.rp-embed-bar a { color: var(--accent-bright); text-decoration: none; white-space: nowrap; }
+.rp-embed-bar a:hover { text-decoration: underline; }
+body.is-embed .header-bar,
+body.is-embed .neo-footer,
+body.is-embed .shell__rail,
+body.is-embed .neo-beacon,
+body.is-embed .skip-link { display: none; }
+body.is-embed .shell { display: block; padding: 0; }
+body.is-embed main#main { padding: var(--space-4); }
+body.is-embed .stack--loose { gap: var(--space-4); }
+
+.rp-shelf__title { font-size: var(--text-base); color: var(--text-secondary); margin: var(--space-6) 0 0; }
+.rp-deck--builtin { border-style: dashed; }
+
+/* The "your history is on another device" notice (C12 A4). Marked as a notice
+   rather than a card so it does not read as a deck. */
+.rp-elsewhere { border-left: 3px solid var(--accent); }
+.rp-elsewhere p { color: var(--text-secondary); margin: 0 0 var(--space-3); max-width: 70ch; }
+
+/* The one auth class the template does not style: the sheet's one-line note. */
+.auth-note { margin: 0; color: var(--text-muted, #9aa3b2); font-size: 0.9rem; }
+/* The template caps the open sheet at 300px with overflow hidden, which clips Clerk's form. */
+.auth-panel.open { max-height: min(80vh, 640px); overflow: auto; }

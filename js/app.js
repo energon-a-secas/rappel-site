@@ -1,15 +1,14 @@
-// ── Entry point ──────────────────────────────────────────────
-// Import modules and initialize the app.
-// Keep this file under 50 lines: it only wires things together.
+// Entry point. It wires and nothing else: every decision is in js/boot.js.
+// Kept under 50 lines on purpose (PLAN constraint 2).
 
-import { state, loadSaved } from './state.js';
-import { render } from './render.js';
-import { bindEvents } from './events.js';
+import { boot } from './boot.js';
 
-function init() {
-  loadSaved(state);
-  render(state);
-  bindEvents(state);
-}
-
-init();
+boot().catch((err) => {
+  console.error('Rappel failed to start', err);
+  const root = document.getElementById('viewRoot');
+  if (root) {
+    root.innerHTML = '<div class="card"><h3>Rappel could not start</h3>'
+      + '<p>Reload the page. If it keeps failing, something is blocking this site\'s scripts, '
+      + 'and the browser console names it. Nothing was written to storage.</p></div>';
+  }
+});
