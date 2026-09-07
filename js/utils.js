@@ -103,9 +103,19 @@ export const UI = {
   },
   licence: { en: 'Licence', es: 'Licencia' },
   // Browse
+  // The lead no longer spells S and D out: the two columns carry an <abbr
+  // title>, so the expansion sits on the header a reader is actually looking
+  // at instead of in a sentence three lines above it. What the lead says
+  // instead is what the table IS, which nothing on the screen said before.
   browseLead: {
-    en: 'Every card, with the scheduler state behind it. S is stability in days, D is difficulty from 1 to 10.',
-    es: 'Todas las tarjetas, con el estado del planificador detrás de cada una. S es la estabilidad en días, D es la dificultad de 1 a 10.',
+    en: 'Every card in this deck, with the scheduler state behind each one.',
+    es: 'Todas las tarjetas de este mazo, con el estado del planificador detrás de cada una.',
+  },
+  browseCount: { en: '{0} cards from {1} notes', es: '{0} tarjetas de {1} notas' },
+  tableCaption: { en: 'Cards and the scheduler state behind each one', es: 'Tarjetas y el estado del planificador detrás de cada una' },
+  tableRegion: {
+    en: 'Cards in {0}. Scroll to reach every column.',
+    es: 'Tarjetas de {0}. Desplázate para llegar a todas las columnas.',
   },
   backToDecks: { en: 'Back to decks', es: 'Volver a los mazos' },
   thFront: { en: 'Front', es: 'Anverso' },
@@ -114,6 +124,11 @@ export const UI = {
   thDue: { en: 'Due', es: 'Vence' },
   thReps: { en: 'Reps', es: 'Reps' },
   thLapses: { en: 'Lapses', es: 'Fallos' },
+  // The two one-letter headers. The letter is what the column is labelled;
+  // these are what the <abbr title> expands it to, for a pointer, for a
+  // keyboard focus and for a reader that announces the expansion.
+  thStability: { en: 'Stability, days', es: 'Estabilidad, días' },
+  thDifficulty: { en: 'Difficulty, 1 to 10', es: 'Dificultad, de 1 a 10' },
   // Settings
   stats: { en: 'Stats', es: 'Estadísticas' },
   settings: { en: 'Settings', es: 'Ajustes' },
@@ -121,6 +136,11 @@ export const UI = {
     en: 'FSRS-6 with the 21 published defaults. There is no optimizer here: fitting parameters is gradient descent over your whole history and needs a build step this site does not have. Paste the array Anki computed for you instead.',
     es: 'FSRS-6 con los 21 valores predeterminados publicados. Aquí no hay optimizador: ajustar los parámetros es un descenso de gradiente sobre todo tu historial y necesita un paso de compilación que este sitio no tiene. Pega en su lugar el array que Anki calculó para ti.',
   },
+  schedulingTitle: { en: 'Scheduling', es: 'Programación' },
+  // Two fieldsets, because two of the five controls are sets and a legend is
+  // the only grouping a screen reader reads out with the field inside it.
+  setGroupModel: { en: 'The FSRS model', es: 'El modelo FSRS' },
+  setGroupDay: { en: 'Steps and the day boundary', es: 'Pasos y el límite del día' },
   desiredRetention: { en: 'Desired retention', es: 'Retención deseada' },
   retentionNote: {
     en: 'Above 90 percent the workload climbs very quickly. At 90 percent the interval equals stability exactly, which is what stability means.',
@@ -179,8 +199,24 @@ export const UI = {
   statReviewsToday: { en: 'Reviews today', es: 'Repasos de hoy' },
   statStreak: { en: 'Day streak', es: 'Racha de días' },
   statRecall: { en: 'Recall', es: 'Recuerdo' },
-  reviewHistory: { en: 'Review history', es: 'Historial de repasos' },
-  noReviewsYet: { en: 'No reviews yet. Answer a card and this fills in.', es: 'Todavía no hay repasos. Responde una tarjeta y esto se rellena.' },
+  statsSummary: { en: 'Summary', es: 'Resumen' },
+  // A chart with no caption is a picture. Each one now says how to read it,
+  // in the flow of the page rather than only in the SVG's accessible name.
+  heatCaption: {
+    en: 'One square per day, darker for more reviews. The rightmost column is this week.',
+    es: 'Un cuadro por día, más oscuro cuantos más repasos. La columna de la derecha es esta semana.',
+  },
+  recallCaption: {
+    en: 'The share of review cards you recalled, over a moving window of the last 50 graded answers.',
+    es: 'La proporción de tarjetas de repaso que recordaste, en una ventana móvil de las últimas 50 respuestas calificadas.',
+  },
+  // "No reviews yet" said the screen was empty and nothing else. This says
+  // what will be here, so the emptiness reads as a starting point.
+  statsEmptyTitle: { en: 'Nothing to draw yet', es: 'Todavía no hay nada que dibujar' },
+  statsEmptyBody: {
+    en: 'Answer one card and this screen fills in: a heatmap of reviews per day over the last eighteen weeks, a day streak, and a recall line that starts once ten answers have been graded.',
+    es: 'Responde una tarjeta y esta pantalla se rellena: un mapa de calor de repasos por día durante las últimas dieciocho semanas, una racha de días y una línea de recuerdo que empieza cuando haya diez respuestas calificadas.',
+  },
   heatTitle: { en: 'Reviews, last 18 weeks', es: 'Repasos, últimas 18 semanas' },
   heatAria: { en: 'Reviews per day over the last eighteen weeks', es: 'Repasos por día durante las últimas dieciocho semanas' },
   countOnDevice: { en: '{0} on this device', es: '{0} en este dispositivo' },

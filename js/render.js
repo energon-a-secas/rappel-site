@@ -14,12 +14,13 @@ import { expandCards, deckName, needsAttribution } from './deck.js';
 import { deckCounts } from './ledger.js';
 import { renderStats } from './stats.js';
 import { renderCard } from './render-session.js';
-import { escHtml, shortDate, mib, $, t, fill, UI } from './utils.js';
+import { renderBrowse } from './render-browse.js';
+import { renderSettings } from './render-settings.js';
+import { escHtml, mib, $, t, fill, UI } from './utils.js';
 import { bindInput } from './transforms.js';
 import { humanGap } from './scheduler.js';
 import { account } from './account.js';
 
-const STATE_LABEL = { new: UI.stateNew, learning: UI.stateLearning, review: UI.stateReview, relearning: UI.stateRelearning };
 /** The overflow menu, as [action, dictionary key]. */
 const DECK_MENU = [['cram', 'cram'], ['browse', 'browse'], ['export-deck', 'deckJson'], ['export-tsv', 'tsv'], ['forget', 'forget']];
 /** Arrow keys as a step. Both axes: the rail is a column at 940px, a row below. */
@@ -62,7 +63,7 @@ export async function render(focusAfter) {
   const viewChanged = state.view !== lastView;
   if (viewChanged) rowIndex = 0;
 
-  const views = { session: renderCard, browse: renderBrowse, settings: renderSettings, stats: renderStats };
+  const views = { session: renderCard, browse: () => renderBrowse(renderLibrary), settings: renderSettings, stats: renderStats };
   el.innerHTML = await (views[state.view] || renderLibrary)();
   lastView = state.view;
 
@@ -431,69 +432,6 @@ function renderLibrary() {
         ${state.storageOk ? '' : `${escHtml(L('storageRefused'))} `}${escHtml(accountLine())}</p>
       <div class="toolbar"><button type="button" class="btn btn--ghost btn--sm" data-act="export-ledger">${escHtml(L('exportLedger'))}</button>
         <button type="button" class="btn btn--ghost btn--sm" data-act="open-restore">${escHtml(L('restoreLedger'))}</button></div>
-    </div>
-  </section>`;
-}
-
-function renderBrowse() {
-  const deck = state.decks[state.activeDeckId];
-  if (!deck) return renderLibrary();
-  const safe = escHtml(deck.id);
-  const rows = expandCards(deck).map((card) => {
-    const row = state.ledger.decks[deck.id]?.cards?.[card.id];
-    const st = row ? t(STATE_LABEL[row.st], state.lang) || row.st : L('stateNew');
-    const front = card.template.kind === 'cloze' ? card.note.f?.[card.template.text_field] : card.note.f?.[deck.fields[0]];
-    const num = (v) => `<td class="rp-num">${v}</td>`;
-    return `<tr><td class="rp-cell-front">${escHtml(String(front || '').slice(0, 80))}</td><td>${escHtml(card.templateId)}</td>`
-      + `<td>${escHtml(st)}</td><td>${escHtml(row && row.s !== 0 ? shortDate(row.due, state.lang) : L('now'))}</td>`
-      + `${num(row ? row.reps : 0)}${num(row ? row.lapses : 0)}${num(row && row.s ? row.s.toFixed(1) : '')}${num(row && row.d ? row.d.toFixed(1) : '')}</tr>`;
-  }).join('');
-  const head = ['thFront', 'thTemplate', 'thState', 'thDue', 'thReps', 'thLapses']
-    .map((k) => `<th scope="col">${escHtml(L(k))}</th>`).join('');
-
-  return `<section class="section" aria-labelledby="browseTitle">
-    <div class="section__header">
-      <div class="section__titles">
-        <h2 class="section__title" id="browseTitle" tabindex="-1">${escHtml(deckName(deck, state.lang))}</h2><p class="rp-version">${escHtml(L('deckVersion', deck.version))}</p>
-        <p class="section__lead">${escHtml(L('browseLead'))}</p>
-      </div>
-      <div class="toolbar"><button type="button" class="btn btn--primary" data-act="review" data-deck="${safe}">${escHtml(L('study'))}</button>
-        <button type="button" class="btn btn--ghost" data-act="library">${escHtml(L('backToDecks'))}</button></div>
-    </div>
-    <div class="rp-table-wrap" role="region" aria-labelledby="browseTitle" tabindex="0">
-      <table class="rp-table">
-        <caption class="rp-visually-hidden">${escHtml(L('browseLead'))}</caption>
-        <thead><tr>${head}<th scope="col">S</th><th scope="col">D</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-  </section>`;
-}
-
-function renderSettings() {
-  const s = state.scheduler;
-  const field = (key, input, block = '') => `<label class="rp-field${block}"><span>${escHtml(L(key))}</span>${input}</label>`;
-  const lang = (code, label) => `<button type="button" class="btn ${state.lang === code ? 'btn--secondary' : 'btn--ghost'}" data-act="lang" data-lang="${code}" aria-pressed="${state.lang === code}"${code === 'es' ? ' lang="es"' : ''}>${label}</button>`;
-  return `<section class="section" aria-labelledby="setTitle">
-    <div class="section__titles"><h2 class="section__title" id="setTitle" tabindex="-1">${escHtml(L('settings'))}</h2>
-      <p class="section__lead">${escHtml(L('settingsLead'))}</p></div>
-    <div class="rp-panel stack stack--tight">
-      ${field('desiredRetention', `<input type="range" id="setRetention" min="0.70" max="0.97" step="0.01" value="${s.desired_retention}">
-        <output id="setRetentionOut">${(s.desired_retention * 100).toFixed(0)}%</output>`)}
-      <p class="rp-note">${escHtml(L('retentionNote'))}</p>
-      ${field('learnSteps', `<input type="text" id="setLearn" value="${escHtml(s.learn_steps.join(', '))}" inputmode="numeric">`)}
-      ${field('relearnSteps', `<input type="text" id="setRelearn" value="${escHtml(s.relearn_steps.join(', '))}" inputmode="numeric">`)}
-      ${field('dayStart', `<input type="number" id="setHour" min="0" max="23" value="${s.day_start_hour}">`)}
-      ${field('params', `<textarea id="setParams" rows="3" spellcheck="false">${escHtml(s.w.join(', '))}</textarea>`, ' rp-field--block')}
-      <p class="rp-note" id="setParamsNote">${escHtml(L('paramsNote'))}</p>
-      <div class="toolbar"><button type="button" class="btn btn--primary" data-act="save-settings">${escHtml(L('save'))}</button>
-        <button type="button" class="btn btn--ghost btn--sm" data-act="reset-settings">${escHtml(L('backToDefaults'))}</button></div>
-    </div>
-
-    <div class="rp-panel stack stack--tight">
-      <h3 class="rp-panel__title">${escHtml(L('language'))}</h3>
-      <div class="toolbar">${lang('en', 'English')}${lang('es', 'Español')}</div>
-      <p class="rp-note">${escHtml(L('languageNote'))}</p>
     </div>
   </section>`;
 }

@@ -148,6 +148,29 @@ function totals(now = Date.now()) {
 
 
 /**
+ * A Viz Kit chart with a sentence under it saying how to read it. The kit
+ * frames a chart with a title and a right-hand scale readout and has no slot
+ * for prose, and js/viz.js is vendored, so the caption is wrapped around the
+ * panel here instead of being added to the kit.
+ */
+function figure(chart, caption) {
+  return `<figure class="rp-figure">${chart}<figcaption class="rp-figure__cap">${escHtml(caption)}</figcaption></figure>`;
+}
+
+/**
+ * The screen before there is anything to draw. It used to be the Viz Kit's
+ * one-line empty box, which said the data was missing and nothing about what
+ * would replace it. This names the three things a single answered card starts.
+ */
+function nothingYetCard() {
+  return `<div class="rp-panel rp-empty">
+    <h3>${escHtml(L('statsEmptyTitle'))}</h3>
+    <p>${escHtml(L('statsEmptyBody'))}</p>
+    <div class="toolbar"><button type="button" class="btn btn--primary" data-act="library">${escHtml(L('backToDecks'))}</button></div>
+  </div>`;
+}
+
+/**
  * The card explaining why a heatmap is empty on a device that plainly has
  * progress. It carries the export and restore controls because export is how a
  * person actually moves history between devices, and a limitation with no route
@@ -185,7 +208,11 @@ export async function renderStats() {
   // are not measurements, they are the absence of one. C12 A4: say so.
   const blind = gap.here === 0 && gap.elsewhere > 0;
 
+  // The strip carries its own quiet label, so the six figures read as one
+  // group under the h2 rather than as six unexplained boxes at the top of the
+  // screen. The figures themselves take the page's headline size in CSS.
   const cards = [
+    `<h3 class="rp-panel__title">${escHtml(L('statsSummary'))}</h3>`,
     viz.statGrid([
       { label: L('statDueNow'), value: tot.due },
       { label: L('statNew'), value: tot.fresh },
@@ -199,24 +226,27 @@ export async function renderStats() {
   if (gap.elsewhere > 0) cards.push(historyElsewhereCard(gap));
 
   if (history.length === 0) {
-    if (!blind) cards.push(viz.empty(L('noReviewsYet'), { title: L('reviewHistory') }));
+    if (!blind) cards.push(nothingYetCard());
   } else {
-    cards.push(viz.heatmap(grid.grid, {
+    cards.push(figure(viz.heatmap(grid.grid, {
       title: L('heatTitle'),
       scale: L(gap.elsewhere > 0 ? 'countOnDevice' : 'countTotal', history.length),
       rows: weekdays(),
       cols: grid.cols,
       cell: 13,
       ariaLabel: L('heatAria'),
-    }));
-    cards.push(series.length >= 2
+    }), L('heatCaption')));
+    cards.push(figure(series.length >= 2
       ? viz.line([{ name: L('statRecall'), values: series }], {
         title: L('recallTitle'),
         scale: retention === null ? '' : L(gap.elsewhere > 0 ? 'recallOnDevice' : 'recallAllTime', retention),
         min: 0, max: 100, area: true,
+        // The kit's categorical palette opens on blue, which on a teal site
+        // was the loudest thing on the screen and meant nothing.
+        colors: ['var(--accent-bright)'],
         ariaLabel: L('recallAria'),
       })
-      : viz.empty(L('recallNeedsTen'), { title: L('recallOverTime') }));
+      : viz.empty(L('recallNeedsTen'), { title: L('recallOverTime') }), L('recallCaption')));
   }
 
   // The screen had no heading of its own: the h1 in the header bar is the site,

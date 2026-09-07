@@ -751,7 +751,8 @@ button:active,
      leaves the percentage readout nothing and drops it to a line of its own,
      under a control it belongs beside. The label takes the line instead, and
      the slider and its readout share the next one. */
-  .rp-field > span { flex-basis: 100%; }
+  .rp-field > span,
+  .rp-group .rp-field > span { flex-basis: 100%; }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -807,6 +808,48 @@ body {
    heatmap's own shape is about two and a half to one, so at the full width of
    a 1280px window it was drawing 18 weeks of mostly-empty grid 400px tall. */
 .rp-charts { max-width: 780px; }
+
+/* ── The stats counter strip ──────────────────────────────────
+ * The Viz Kit draws the six counters at 1.05rem over a 0.58rem uppercase
+ * label: a 1.8 ratio between two sizes that are both small, so the figure a
+ * person came to the screen for was the same weight as the word naming it.
+ * js/viz.js and css/viz.css are vendored and are not edited, so the type is
+ * set here, scoped to this screen: the figure takes the page's headline step
+ * and the label takes body-small. The kit still draws every chart.
+ */
+.rp-charts .viz-stat {
+  /* The kit's order is label then value. Reversed, the figure leads and every
+     figure in the strip sits on one line: with the label first, "Reviews
+     today" wrapped and pushed its number a line below the other five. */
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  min-width: 116px;
+}
+.rp-charts .viz-stat__value {
+  font-family: var(--font);
+  font-size: var(--text-2xl);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+.rp-charts .viz-stat__label {
+  font-size: var(--text-sm);
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-muted);
+}
+
+/* A chart and the sentence that says how to read it. The kit's frame has a
+   title and a scale readout and no room for prose, so the caption is a
+   figcaption wrapped around the panel rather than a change to the kit. */
+.rp-figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.rp-figure__cap {
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-width: 64ch;
+}
 
 /* The label above a secondary block: shelf, storage, a settings group. Small
    and quiet on purpose, so it separates without competing with the h2. */
@@ -1013,19 +1056,72 @@ body {
 
 /* ── Browse table ─────────────────────────────────────────── */
 /* A horizontally scrolling region is unreachable by keyboard unless it is a
-   tab stop, so the markup gives it tabindex="0" and a name. */
+   tab stop, so the markup gives it tabindex="0" and a name of its own: named
+   by the deck heading it was announced as the deck, which told a reader
+   nothing about what it had just stepped into. */
 .rp-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface-1);
 }
+.rp-table-wrap:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+/* A deck over two dozen cards gets its own scroll box, and only then does the
+   sticky header below do anything: sticky resolves against the nearest
+   scrolling ancestor, so a wrapper with no height limit held a header that
+   scrolled away with the rows. A short deck keeps its natural height, because
+   a box with a scrollbar and four rows in it is furniture for nothing. */
+.rp-table-wrap--tall { max-height: min(68vh, 640px); overflow-y: auto; }
 .rp-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
-.rp-table th, .rp-table td { padding: var(--space-2) var(--space-3); text-align: left; border-bottom: 1px solid var(--border-subtle); }
-.rp-table th { color: var(--text-muted); font-weight: 600; position: sticky; top: 0; background: var(--bg); }
+/* Row rhythm. The cells were --space-2 tall, which put eight columns of
+   numbers on a 30px line and made 900 rows one grey texture. A 1.6 line height
+   inside 12px of block padding is a row you can follow across. */
+.rp-table th, .rp-table td {
+  padding: var(--space-3);
+  text-align: left;
+  line-height: 1.5;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.rp-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  /* Opaque, and the same value --surface-1 resolves to over --bg: the
+     translucent token let the rows read straight through the header it was
+     supposed to be covering. */
+  background: color-mix(in srgb, var(--text-primary) 3%, var(--bg));
+  border-bottom: 1px solid var(--border-strong);
+}
+/* Alternating grounds, at a third of the hover strength, so the eye tracks a
+   row across eight columns without the table turning into a set of bands. */
+.rp-table tbody tr:nth-child(even) { background: rgba(255, 255, 255, .018); }
 .rp-table tbody tr:hover { background: var(--surface-1); }
-.rp-cell-front { max-width: 34ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rp-num { text-align: right; font-variant-numeric: tabular-nums; }
+.rp-table tbody td { color: var(--text-secondary); }
+/* One thing per row is the card. Everything else is state about it.
+   Qualified so it outranks the tbody td colour above. */
+.rp-table tbody td.rp-cell-front {
+  max-width: 34ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.rp-num, .rp-num-head { text-align: right; }
+.rp-num { font-variant-numeric: tabular-nums; }
+/* S and D. The letter is the label, the title is the expansion, and the
+   dotted underline is what says there is one to ask for. */
+.rp-table abbr[title] {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+.rp-version__dot { padding: 0 var(--space-1); opacity: .6; }
 
 /* ── Forms ────────────────────────────────────────────────── */
 .rp-field { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
@@ -1057,6 +1153,33 @@ body {
 .rp-check input { accent-color: var(--accent); }
 .rp-radios { border: 0; padding: 0; margin: 0; display: grid; gap: var(--space-2); }
 .rp-radios legend { color: var(--text-muted); font-size: var(--text-sm); padding: 0 0 var(--space-2); }
+/* A settings group. Five controls in one flat column said nothing about which
+   of them belong together; a fieldset says it in the markup, and its legend is
+   the one grouping a screen reader repeats as it moves between the fields.
+   No border: a fieldset's border is drawn everywhere except behind its legend,
+   so a rule ran through the middle of "Steps and the day boundary". The space
+   between the groups is the separator, and the legend's weight is the label. */
+.rp-group {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.rp-group + .rp-group { margin-top: var(--space-4); }
+.rp-group__legend {
+  padding: 0;
+  margin-bottom: var(--space-1);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+/* One label column, so three fields of three different label lengths do not
+   start their inputs at three different places. */
+@media (min-width: 621px) {
+  .rp-group .rp-field > span { flex: 0 0 21ch; }
+}
+.rp-group .rp-note { max-width: 68ch; margin-bottom: var(--space-2); }
 
 /* ── The licence acknowledgement ──────────────────────────── */
 .neo-attrib {
