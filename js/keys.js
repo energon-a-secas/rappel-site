@@ -31,27 +31,28 @@ function grades() {
 }
 
 /**
- * Give Space back to whatever holds the keyboard. WCAG 2.1.1.
+ * Space reaches the kit only on a face-down card. WCAG 2.1.1 and 2.1.4.
  *
  * The kit's single listener calls preventDefault() and only then runs the
- * entry, so a Space on a focused control was cancelled before the browser
- * could activate it: Study, the row menu, Show answer and the armed grade all
- * did nothing, while the hint under the grades promised Enter and Space both.
- * Declining inside run() is too late, the default is already gone.
+ * entry, so a Space it receives is cancelled before the browser can act on it:
+ * a focused control would not activate, and on the library, browse, stats and
+ * settings the page would not scroll. Declining inside run() is too late, the
+ * default is already gone.
  *
- * This runs before init() installs the kit's listener, so on a control it
- * stops the event reaching the kit and native activation stands. Everywhere
- * else Space falls through and still flips the card.
+ * This runs before init() installs the kit's listener. Unless the session
+ * shows a face-down card with focus off any control, it stops the event
+ * reaching the kit, so native activation and page scrolling stand.
  */
-function yieldSpaceToControls() {
+function yieldSpace() {
   document.addEventListener('keydown', (e) => {
     if (e.key !== ' ' || !(e.target instanceof Element)) return;
-    if (e.target.closest('button, a[href], [role="radio"], [role="menuitem"]')) e.stopImmediatePropagation();
+    const faceDown = state.view === 'session' && !!state.session && !state.session.flipped;
+    if (!faceDown || e.target.closest('button, a[href], [role="radio"], [role="menuitem"]')) e.stopImmediatePropagation();
   });
 }
 
 export function initKeys() {
-  yieldSpaceToControls();
+  yieldSpace();
   const keys = init({ chromeToggle: state.embed ? false : undefined });
   const group = L('stateReview');
   keys.register([
@@ -62,7 +63,7 @@ export function initKeys() {
       hint: L('keyFlipHint'),
       group,
       // On a focused control Space is that control's own activation, and
-      // yieldSpaceToControls() above stops the event before it arrives here.
+      // yieldSpace() above stops the event before it arrives here.
       run: () => keyAction('flip'),
     },
     ...grades().map(([key, label, hint]) => ({

@@ -173,7 +173,7 @@ function announceSession() {
   const front = readable(el.querySelector('.rp-face--front'));
   const flipped = !!el.querySelector('.rp-face--back');
   const n = Math.min((s?.answered || 0) + 1, s?.queued || 0);
-  if (front && front !== lastFront) {
+  if (front && `${s?.answered ?? 0}|${front}` !== lastFront) {
     const tally = n > 1 && (n - 1) % 5 === 0 ? ` ${L('progressText', s.answered, s.queued)}` : '';
     // The chip reporting the grade just given is visual, and was only that.
     const ack = readable(el.querySelector('.rp-card__ack'));
@@ -182,7 +182,7 @@ function announceSession() {
     const back = readable(el.querySelector('.rp-face--back'));
     say([readable(el.querySelector('.rp-verdict')), back ? L('answerIs', back) : ''].filter(Boolean).join(' '));
   }
-  lastFront = front;
+  lastFront = front ? `${s?.answered ?? 0}|${front}` : '';
   lastFlipped = flipped;
 }
 /* ── The rail ─────────────────────────────────────────────────────────────
