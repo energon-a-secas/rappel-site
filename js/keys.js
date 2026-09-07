@@ -30,7 +30,28 @@ function grades() {
   ];
 }
 
+/**
+ * Give Space back to whatever holds the keyboard. WCAG 2.1.1.
+ *
+ * The kit's single listener calls preventDefault() and only then runs the
+ * entry, so a Space on a focused control was cancelled before the browser
+ * could activate it: Study, the row menu, Show answer and the armed grade all
+ * did nothing, while the hint under the grades promised Enter and Space both.
+ * Declining inside run() is too late, the default is already gone.
+ *
+ * This runs before init() installs the kit's listener, so on a control it
+ * stops the event reaching the kit and native activation stands. Everywhere
+ * else Space falls through and still flips the card.
+ */
+function yieldSpaceToControls() {
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== ' ' || !(e.target instanceof Element)) return;
+    if (e.target.closest('button, a[href], [role="radio"], [role="menuitem"]')) e.stopImmediatePropagation();
+  });
+}
+
 export function initKeys() {
+  yieldSpaceToControls();
   const keys = init({ chromeToggle: state.embed ? false : undefined });
   const group = L('stateReview');
   keys.register([
@@ -40,12 +61,9 @@ export function initKeys() {
       label: L('showAnswer'),
       hint: L('keyFlipHint'),
       group,
-      run: () => {
-        // On a focused button or link, Space is that control's own activation.
-        const t = document.activeElement;
-        if (t && (t.tagName === 'BUTTON' || t.tagName === 'A')) return;
-        keyAction('flip');
-      },
+      // On a focused control Space is that control's own activation, and
+      // yieldSpaceToControls() above stops the event before it arrives here.
+      run: () => keyAction('flip'),
     },
     ...grades().map(([key, label, hint]) => ({
       key,

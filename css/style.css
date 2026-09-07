@@ -24,6 +24,16 @@
   --surface-toast: #1a1730;
   --danger: #e11d48;
   --danger-hover: #f43f5e;
+  /* Hit and miss, declared once. Four hex literals used to sit in the review
+     block below, which meant the "you recalled it" green had no relationship
+     to the site's own teal and the Hard amber had no relationship to anything.
+     Both are derived: --ok IS the accent, and --warn is the accent and danger
+     mixed, which in oklch lands on amber. Caution, not failure. */
+  --ok: var(--accent-bright);
+  --warn: color-mix(in oklch, var(--danger) 60%, var(--accent-bright));
+  /* A popover needs an opaque ground: --surface-1 is translucent white and the
+     row underneath would read straight through the menu sitting on it. */
+  --surface-menu: color-mix(in srgb, var(--text-primary) 7%, var(--bg));
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --control-height: 44px;
   --control-height-sm: 36px;
@@ -193,11 +203,25 @@ main#main {
   min-width: 0;
 }
 .section__title {
-  font-size: var(--text-xl);
+  /* One step of at least 1.25 over the deck-name --text-lg below it. At
+     --text-xl the two were 1.11 apart and the page had no top of hierarchy. */
+  font-size: var(--text-2xl);
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
   color: var(--text-primary);
+  /* render.js focuses this heading after a view change, so it takes a visible
+     ring. Shrunk to its text: a block-level h2 would draw the ring around the
+     whole column and read as a text field rather than as a heading. */
+  width: fit-content;
+  max-width: 100%;
 }
+/* Both skip links land on one of these. A target scrolled flush to the top of
+   the viewport sits under the sticky 56px app header, so it clears the bar's
+   own height (the kit's token, not a literal) and keeps 16px of air. */
+.section__title,
+#rpCard { scroll-margin-top: calc(var(--header-h-app, 56px) + var(--space-4)); }
+.section__title:focus-visible { outline-offset: 6px; border-radius: 2px; }
 .section__lead {
   font-size: var(--text-sm);
   color: var(--text-muted);
@@ -223,7 +247,26 @@ main#main {
  * .header-logo*, .header-title-link, .header-subtitle, .header-right,
  * .header-actions, or .header-home here. Auth styles (.auth-*) stay
  * site-owned below.
+ *
+ * The one sanctioned exception is a custom skin: TOKENS ONLY, and the selector
+ * is copied exactly from packages/neorgon-ui/header/README.md, section
+ * `custom`. The kit's magenta over a teal site put two identities on one page,
+ * and this site's palette is not one any other site would reuse, so there is no
+ * named skin to reach for. html:not([data-theme]) is what makes the whole block
+ * stop matching the moment a visitor picks a theme: the person outranks the
+ * site, and the site outranks nothing.
  */
+/* The mix is in oklab, not oklch: oklch interpolates the hue angle, and the
+   ground sits at 265 while the accent sits at 180, so the header landed on
+   oklch(0.43 0.079 224) and read as a different blue from the teal buttons
+   under it. oklab keeps the accent's own hue and only darkens it. */
+html:not([data-theme]) .header-bar[data-header-skin="custom"] {
+  --header-bg-start: color-mix(in oklab, var(--accent) 52%, var(--bg));
+  --header-bg-mid: color-mix(in oklab, var(--accent) 24%, var(--bg));
+  --header-bg-end: var(--bg);
+  --header-accent: var(--accent-bright);
+  --header-menu-bg: var(--surface-menu);
+}
 nav {
   display: flex;
   align-items: center;
@@ -287,35 +330,38 @@ nav {
   border-color: var(--border-strong);
 }
 .btn--secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: color-mix(in oklab, var(--text-primary) 10%, var(--surface-2));
 }
 .btn--ghost {
   background: transparent;
-  color: rgba(255,255,255,0.92);
-  border-color: rgba(255,255,255,0.18);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
 }
 .btn--ghost:hover {
-  background: rgba(255,255,255,0.1);
-  color: #fff;
+  background: var(--surface-2);
+  color: var(--text-primary);
 }
 .btn--danger {
   background: var(--danger);
-  color: #fff;
+  color: var(--text-primary);
   border-color: transparent;
 }
 .btn--danger:hover { background: var(--danger-hover); }
 
-/* Toolbar ghost (header nav): same as .btn.btn--ghost.btn--sm */
+/* Toolbar ghost (header nav). Inside .shell__rail the border comes off: a
+   bordered button inside a bordered box is a box in a box, and the rail drew
+   four of them. The rail keeps its own frame and the items are plain until
+   they are hovered or current. */
 .nav-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: var(--control-height);
   padding: 0 var(--space-3);
-  border: 1px solid rgba(255,255,255,0.18);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: transparent;
-  color: rgba(255,255,255,0.92);
+  color: var(--text-primary);
   cursor: pointer;
   font-family: inherit;
   font-size: var(--text-sm);
@@ -323,9 +369,15 @@ nav {
   transition: background-color var(--dur), color var(--dur), border-color var(--dur);
 }
 .nav-link:hover {
-  background: rgba(255,255,255,0.1);
-  color: #fff;
+  background: var(--surface-2);
+  color: var(--text-primary);
 }
+.shell__rail .nav-link {
+  justify-content: flex-start;
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+.shell__rail .nav-link:hover { color: var(--text-primary); }
 
 .auth-toggle {
   display: flex;
@@ -334,17 +386,17 @@ nav {
   min-width: var(--control-height);
   min-height: var(--control-height);
   padding: 0;
-  border: 1px solid rgba(255,255,255,0.18);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: transparent;
-  color: rgba(255,255,255,0.92);
+  color: var(--text-primary);
   cursor: pointer;
   font-family: inherit;
   transition: background-color var(--dur), color var(--dur), border-color var(--dur);
 }
 .auth-toggle:hover {
-  background: rgba(255,255,255,0.1);
-  color: #fff;
+  background: var(--surface-2);
+  color: var(--text-primary);
 }
 .auth-toggle svg {
   width: 22px;
@@ -363,7 +415,7 @@ nav {
  * For blocking overlays use .modal below.
  */
 .auth-panel {
-  background: rgba(255,255,255,0.02);
+  background: var(--surface-1);
   border-bottom: 1px solid var(--border-subtle);
   max-height: 0;
   overflow: hidden;
@@ -417,7 +469,8 @@ nav {
   border: none;
   border-radius: var(--radius-sm);
   background: var(--accent);
-  color: #fff;
+  /* Same reason as .btn--primary: white on this teal is 2.49:1. */
+  color: var(--bg);
   font-family: inherit;
   font-weight: 600;
   font-size: var(--text-sm);
@@ -473,7 +526,7 @@ nav {
 .modal__backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(2, 4, 12, 0.85);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
   -webkit-backdrop-filter: blur(10px); /* Safari still needs the prefix */
   backdrop-filter: blur(10px);
 }
@@ -553,7 +606,7 @@ nav {
 }
 .card:hover {
   border-color: var(--border-strong);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.45);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--bg) 60%, transparent);
 }
 .card--interactive {
   transition:
@@ -652,7 +705,7 @@ button:active,
   z-index: 1000;
   padding: var(--space-2) var(--space-4);
   background: var(--accent-bright);
-  color: #000;
+  color: var(--bg);
   font-weight: 600;
   font-size: var(--text-sm);
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
@@ -679,6 +732,26 @@ button:active,
     right: var(--space-4);
     max-width: none;
   }
+}
+
+/* A deck row folds rather than crushes: the name and its sentence take the
+   full width, and Study takes what is left of the line beside the menu. Study
+   stays 44px at every width, which is the point of moving the other five
+   actions off the row. */
+@media (max-width: 620px) {
+  .rp-deck {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-inline: 0;
+  }
+  .rp-deck__text { grid-column: 1 / -1; }
+  .rp-deck__go { justify-self: stretch; }
+  .rp-panel { padding: var(--space-4); }
+  .rp-menu__list { min-width: 180px; }
+  /* A settings label is 15ch wide and the slider asks for 150, which at 390px
+     leaves the percentage readout nothing and drops it to a line of its own,
+     under a control it belongs beside. The label takes the line instead, and
+     the slider and its readout share the next one. */
+  .rp-field > span { flex-basis: 100%; }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -716,61 +789,221 @@ body {
   margin: 0;
 }
 
-/* ── Deck library ─────────────────────────────────────────── */
-.rp-deck__head { display: flex; align-items: baseline; gap: var(--space-3); }
-.rp-deck__name { font-size: var(--text-lg); margin: 0; }
-.rp-deck__version { color: var(--text-muted); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
-.rp-deck__counts {
-  display: flex; flex-wrap: wrap; align-items: center;
-  gap: var(--space-2); margin: var(--space-3) 0;
-}
-.rp-deck__next { color: var(--text-muted); font-size: var(--text-sm); }
-.rp-pill {
-  padding: 2px 10px; border-radius: 999px;
-  border: 1px solid var(--border);
+/* A grouping surface with no backdrop blur and no hover reaction. .card has
+   both, which on a settings form is decoration reacting to a mouse that is on
+   its way somewhere else. */
+.rp-panel {
+  /* A form and a notice are prose plus controls, and prose has a measure. A
+     desktop window is far wider than one, and the settings notes ran past 110
+     characters a line before this. */
+  max-width: 780px;
   background: var(--surface-1);
-  font-size: var(--text-xs); font-variant-numeric: tabular-nums;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
 }
-.rp-pill--due { border-color: color-mix(in srgb, var(--accent) 55%, transparent); color: var(--accent-bright); }
-.rp-pill--new { border-color: var(--border-strong); }
-.rp-empty h3 { margin-bottom: var(--space-2); }
+
+/* Every chart on the stats screen shares one measure with the panels. The
+   heatmap's own shape is about two and a half to one, so at the full width of
+   a 1280px window it was drawing 18 weeks of mostly-empty grid 400px tall. */
+.rp-charts { max-width: 780px; }
+
+/* The label above a secondary block: shelf, storage, a settings group. Small
+   and quiet on purpose, so it separates without competing with the h2. */
+.rp-panel__title,
+.rp-shelf__title,
+.rp-storage__title {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ── Deck library ─────────────────────────────────────────────
+ * Rows, not cards. Four decks used to be four bordered boxes, each holding six
+ * equally weighted buttons and three pills, one of which drew "0 due" in the
+ * accent colour. The page had no first thing to look at.
+ *
+ * A row is now one line of hierarchy: the name, one sentence that means
+ * something, one primary button, and everything else behind a menu. The accent
+ * appears only on the sentence of a deck that has work waiting, so a library
+ * with nothing due is entirely monochrome and the deck to study is the only
+ * coloured thing on the screen.
+ */
+.rp-decks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+.rp-deck {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-4) var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+/* The roving tabindex means one row at a time holds the keyboard. Saying which
+   one is not decoration: without it, Up and Down move an invisible cursor. */
+.rp-deck:focus-within { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.rp-deck__text { min-width: 0; }
+.rp-deck__name {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.rp-deck__readout {
+  margin: 3px 0 0;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.rp-deck__readout--ready { color: var(--accent-bright); }
+/* "4 to study now" and "3 due, 1 new" are two sentences sharing a line, and a
+   space between them read as one run-on: "204 to study now 4 due, 200 new". */
+.rp-deck__split { color: var(--text-muted); }
+.rp-deck__split::before { content: ": "; }
+.rp-deck__go { min-width: 108px; }
+
+/* ── The row's overflow menu ──────────────────────────────────
+ * Cram, Browse, the two exports and Forget. Forget was a saturated red button
+ * on every row of the library; it is now one item inside a menu a person has
+ * to open, so the page has at most one red thing on it and never by default.
+ */
+.rp-menu { position: relative; }
+.rp-menu__btn {
+  display: inline-grid;
+  place-items: center;
+  width: var(--control-height);
+  height: var(--control-height);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--text-lg);
+  line-height: 1;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background-color var(--dur), color var(--dur), border-color var(--dur);
+}
+.rp-menu__btn:hover,
+.rp-menu__btn[aria-expanded="true"] {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+.rp-menu__list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  padding: var(--space-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface-menu);
+  box-shadow: var(--shadow-card);
+  animation: rp-menu-in 140ms var(--ease-out) both;
+}
+@keyframes rp-menu-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.rp-menu__item {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-fast), color var(--dur-fast);
+}
+.rp-menu__item:hover,
+.rp-menu__item:focus-visible {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+/* Forget is separated from the four reversible actions above it by a hairline
+   rather than by being loud. */
+.rp-menu__item--danger {
+  position: relative;
+  margin-top: var(--space-2);
+  color: color-mix(in srgb, var(--danger-hover) 75%, var(--text-primary));
+}
+.rp-menu__item--danger::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--space-1) * -1) var(--space-2) auto;
+  height: 1px;
+  background: var(--border-subtle);
+}
+.rp-menu__item--danger:hover,
+.rp-menu__item--danger:focus-visible {
+  background: color-mix(in srgb, var(--danger) 20%, transparent);
+  color: var(--text-primary);
+}
+
+/* ── Shelf and storage ────────────────────────────────────── */
+.rp-shelf,
+.rp-storage { display: flex; flex-direction: column; gap: var(--space-3); }
+.rp-storage {
+  gap: var(--space-4);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border-subtle);
+}
+.rp-storage .rp-note { max-width: 72ch; }
+
+.rp-empty h3 { margin: 0 0 var(--space-2); }
 .rp-empty p { color: var(--text-secondary); margin: 0; max-width: 60ch; }
+.rp-empty .toolbar { margin-top: var(--space-4); }
 
 /* Scheduling state arrived without the reviews behind it: sync carries the
    card map and never the log (C12 A4), and an export leaves the log out by
    default. Rendered as a statement with a route out of it, never as a zero. */
 .rp-elsewhere { border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+.rp-elsewhere p { color: var(--text-secondary); margin: 0; max-width: 70ch; }
 .rp-elsewhere p + p { margin-top: var(--space-3); }
 .rp-elsewhere .toolbar { margin-top: var(--space-4); }
 
-/* ── Review surface ───────────────────────────────────────── */
-.rp-session__bar {
-  display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+/* The deck version, under the deck name on the browse screen. It was a stamp
+   on every library row at the same weight as the counts, meaning nothing to
+   anyone standing in front of a list of decks to study, and it is a sibling of
+   the h2 rather than inside it: a heading's accessible name is the deck, and
+   render.js reads that heading out on arrival. */
+.rp-version {
+  margin: 2px 0 0;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
-.rp-session__bar .section__title { margin: 0; flex: 1 1 auto; }
-.rp-session__count { color: var(--text-muted); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 
-.rp-progress {
-  height: 4px; border-radius: 999px; background: var(--surface-2);
-  margin: var(--space-3) 0 var(--space-4); overflow: hidden;
-}
-.rp-progress__fill {
-  height: 100%; background: var(--accent);
-  transition: width var(--dur) var(--ease-out);
-}
-@media (prefers-reduced-motion: reduce) { .rp-progress__fill { transition: none; } }
-
-.rp-card { display: flex; flex-direction: column; gap: var(--space-4); min-height: 180px; }
-.rp-face { font-size: clamp(1.4rem, 4vw, 2.1rem); line-height: 1.35; white-space: pre-wrap; word-break: break-word; }
-.rp-face--back { color: var(--accent-bright); }
-.rp-rule { border: 0; border-top: 1px solid var(--border); margin: 0; }
-
-.rp-cloze {
-  padding: 0 .4em; border-radius: var(--radius-sm);
-  background: var(--surface-2); color: var(--text-muted);
-}
-.rp-cloze--shown { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent-bright); }
-
+/* ── Review surface ───────────────────────────────────────────
+ * The whole review block used to live here and every rule of it was shadowed
+ * by css/session.css, which loads after this file and declares the same
+ * selectors with more specificity. Two descriptions of one screen is one
+ * description too many: a change to the card was made twice or made once and
+ * silently lost. Only the two media rules were ever this file's alone.
+ */
 .rp-media-img { max-width: 100%; height: auto; border-radius: var(--radius-sm); }
 .rp-media-audio {
   font: inherit; font-size: var(--text-sm); padding: 4px 12px;
@@ -778,57 +1011,15 @@ body {
   background: var(--surface-1); color: var(--text-primary); cursor: pointer;
 }
 
-.rp-typed {
-  width: 100%; font: inherit; font-size: var(--text-xl);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius); border: 1px solid var(--border-strong);
-  background: var(--surface-1); color: var(--text-primary);
-}
-.rp-typed:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
-
-.rp-choices { display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-.rp-choice { justify-content: flex-start; gap: var(--space-3); text-align: left; }
-.rp-choice__key {
-  display: inline-grid; place-items: center; width: 1.6em; height: 1.6em;
-  border-radius: var(--radius-sm); background: var(--surface-2);
-  font-size: var(--text-xs); font-variant-numeric: tabular-nums;
-}
-
-.rp-verdict { margin: 0; font-size: var(--text-sm); }
-.rp-verdict--hit { color: #34d399; }
-.rp-verdict--miss { color: #fbbf24; }
-
-/* ── The four ratings ─────────────────────────────────────── */
-.rp-grades {
-  display: grid; gap: var(--space-2);
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  margin-top: var(--space-4);
-}
-.rp-grade {
-  display: grid; gap: 2px; justify-items: start; text-align: left;
-  height: auto; padding: var(--space-3) var(--space-4);
-  background: var(--surface-1); border: 1px solid var(--border-strong); color: var(--text-primary);
-}
-.rp-grade kbd {
-  font: inherit; font-size: var(--text-xs); padding: 0 6px; border-radius: 4px;
-  border: 1px solid var(--border); background: var(--surface-2); color: var(--text-muted);
-}
-.rp-grade__name { font-weight: 600; }
-.rp-grade__gloss { font-size: var(--text-xs); color: var(--text-secondary); font-weight: 400; }
-.rp-grade__eta { font-size: var(--text-xs); color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.rp-grade--again { border-color: color-mix(in srgb, var(--danger) 55%, transparent); }
-.rp-grade--hard  { border-color: color-mix(in srgb, #fbbf24 45%, transparent); }
-.rp-grade--good  { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
-.rp-grade--easy  { border-color: color-mix(in srgb, #34d399 45%, transparent); }
-.rp-grade:hover { background: var(--surface-2); }
-.rp-grade__warn {
-  margin: var(--space-3) 0 0; font-size: var(--text-sm); color: var(--text-muted); max-width: 70ch;
-}
-.rp-flip-row { margin-top: var(--space-4); }
-.rp-summary { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-
 /* ── Browse table ─────────────────────────────────────────── */
-.rp-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+/* A horizontally scrolling region is unreachable by keyboard unless it is a
+   tab stop, so the markup gives it tabindex="0" and a name. */
+.rp-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+}
 .rp-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .rp-table th, .rp-table td { padding: var(--space-2) var(--space-3); text-align: left; border-bottom: 1px solid var(--border-subtle); }
 .rp-table th { color: var(--text-muted); font-weight: 600; position: sticky; top: 0; background: var(--bg); }
@@ -845,8 +1036,22 @@ body {
   border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
   background: var(--surface-1); color: var(--text-primary);
 }
+/* A field is as wide as what goes in it. "60, 600" in a 1100px box and a day
+   of the hour clock in another one read as a form nobody laid out. */
+.rp-field input[type="text"] { max-width: 22ch; }
+.rp-field input[type="number"] { max-width: 8ch; }
+.rp-field textarea { max-width: 62ch; }
 .rp-field textarea { min-height: 5em; resize: vertical; font-family: var(--mono, ui-monospace, Menlo, monospace); font-size: var(--text-sm); }
-.rp-field input[type="range"] { flex: 1 1 180px; accent-color: var(--accent); }
+/* The track is 16px tall; the control it belongs to is not. min-height gives
+   the thumb a 44px band to be grabbed in without changing how it draws. */
+/* Shrinkable, so the percentage readout stays on the slider's own line at
+   390px instead of dropping to a third line under it. */
+.rp-field input[type="range"] {
+  flex: 1 1 150px;
+  max-width: 260px;
+  min-height: var(--control-height);
+  accent-color: var(--accent);
+}
 .rp-field output { font-variant-numeric: tabular-nums; min-width: 4ch; }
 .rp-check { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--text-secondary); }
 .rp-check input { accent-color: var(--accent); }
@@ -886,13 +1091,7 @@ body.is-embed .shell { display: block; padding: 0; }
 body.is-embed main#main { padding: var(--space-4); }
 body.is-embed .stack--loose { gap: var(--space-4); }
 
-.rp-shelf__title { font-size: var(--text-base); color: var(--text-secondary); margin: var(--space-6) 0 0; }
-.rp-deck--builtin { border-style: dashed; }
 
-/* The "your history is on another device" notice (C12 A4). Marked as a notice
-   rather than a card so it does not read as a deck. */
-.rp-elsewhere { border-left: 3px solid var(--accent); }
-.rp-elsewhere p { color: var(--text-secondary); margin: 0 0 var(--space-3); max-width: 70ch; }
 
 /* The one auth class the template does not style: the sheet's one-line note. */
 .auth-note { margin: 0; color: var(--text-muted, #9aa3b2); font-size: 0.9rem; }

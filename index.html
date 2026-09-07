@@ -31,6 +31,7 @@
   <!-- Fleet design tokens: canonical, do not redeclare locally (PROJECTS.md section 5) -->
   <link rel="stylesheet" href="https://cdn.neorgon.org/v1.0.0/styles/base.css">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/session.css">
   <!-- Neorgon Header Kit (vendored; ?header=live swaps CSS to CDN). Keep after style.css, the kit owns the header. -->
   <script>(function(){var m=location.search.match(/[?&]theme=([\w-]+)/)||document.cookie.match(/(?:^|;\s*)neo_theme=([\w-]+)/);if(m&&m[1]!=='default')document.documentElement.dataset.theme=decodeURIComponent(m[1]);})();</script>
   <link rel="stylesheet" href="css/neorgon-header.css">
@@ -70,10 +71,16 @@
 </head>
 <body>
 
-  <a class="skip-link" href="#main">Skip to content</a>
+  <!-- Skip links. render.js repoints "Skip to content" at the current view's
+       own h2 after every paint, so the first thing read is the screen's name
+       rather than an unnamed div; #viewRoot is the fallback for a screen with
+       no heading. The card link is shown by render.js during a session and
+       hidden again after it, since there is nothing to skip to otherwise. -->
+  <a class="skip-link" id="skipCard" href="#rpCard" data-ui="skipToCard" hidden>Skip to the card</a>
+  <a class="skip-link" id="skipMain" href="#viewRoot" data-ui="skipToContent">Skip to content</a>
 
   <!-- Neorgon Header Kit contract. app mode: slim 56px, auto-hides on scroll. -->
-  <header class="header-bar" data-header-mode="app">
+  <header class="header-bar" data-header-mode="app" data-header-skin="custom">
     <div class="header-logo">
       <a href="./" class="header-title-link">
         <img src="https://cdn.neorgon.org/v1.0.0/energon-classic-logo.png" class="header-logo-img" alt="">
@@ -85,9 +92,13 @@
     </div>
 
     <div class="header-right">
+      <!-- Import is the one action worth reaching from any screen, and it is
+           where an empty library points. Export and Restore moved to the
+           Storage block at the foot of the library, beside the sentence about
+           where the ledger actually lives: they were tab stops twice over,
+           once here and once in the library toolbar. -->
       <div class="header-actions">
         <button type="button" class="btn btn--ghost btn--sm" data-act="open-import" data-keep-mobile data-ui="import">Import</button>
-        <button type="button" class="btn btn--ghost btn--sm" data-act="export-ledger" data-ui="exportLedger">Export ledger</button>
       </div>
       <!-- Accounts (CONTRACTS C7.2). Hidden until a clerk-publishable-key meta
            is on the page; js/account.js shows it when sync is available. -->
@@ -99,14 +110,13 @@
         </svg>
       </button>
       <a class="header-home" href="https://neorgon.com/" title="neorgon.com" aria-label="Neorgon home">
-        <svg class="nh-hub-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <circle cx="12" cy="12" r="4.4"/>
-          <ellipse cx="12" cy="12" rx="8.4" ry="3" transform="rotate(-18 12 12)"/>
+        <svg class="nh-hub-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M12 4.4 18.58 8.2 18.58 15.8 12 19.6 5.42 15.8 5.42 8.2Z" fill="currentColor" stroke="none"/>
           <g class="nh-orbit">
-            <path d="M17.5 4.2 14.2 2.7l.9 1.4-.6 1.1z" fill="currentColor" stroke="none"/>
-            <circle cx="12.6" cy="3" r=".7" fill="currentColor" stroke="none" opacity=".55"/>
-            <circle cx="11.1" cy="3.3" r=".55" fill="currentColor" stroke="none" opacity=".35"/>
-            <circle cx="9.8" cy="3.7" r=".4" fill="currentColor" stroke="none" opacity=".2"/>
+            <path d="M2.47 17.50 A11.0 11.0 0 0 1 14.85 1.37" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round"/>
+            <path d="M21.53 6.50 A11.0 11.0 0 0 1 9.15 22.63" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round"/>
+            <circle cx="21.71" cy="6.84" r="1.25" fill="currentColor"/>
+            <circle cx="2.29" cy="17.16" r="1.25" fill="currentColor"/>
           </g>
         </svg>
       </a>
@@ -125,17 +135,17 @@
 
   <main id="main">
     <div class="shell">
-      <nav class="shell__rail" aria-label="Section">
+      <nav class="shell__rail" aria-label="Sections" data-ui-aria="navLabel">
         <button type="button" class="nav-link is-active" data-view="library" aria-current="page" data-ui="decks">Decks</button>
         <button type="button" class="nav-link" data-view="stats" data-ui="stats">Stats</button>
         <button type="button" class="nav-link" data-view="settings" data-ui="settings">Settings</button>
       </nav>
       <div class="shell__main stack stack--loose">
-        <div id="viewRoot"></div>
+        <div id="viewRoot" tabindex="-1"></div>
         <!-- The licence acknowledgement. Site owned, at the foot of the main
              content region, emitted from the loaded deck's own declaration so
              an author cannot forget it. Contract C11.3. -->
-        <aside class="neo-attrib" id="attrib" hidden></aside>
+        <aside class="neo-attrib" id="attrib" aria-label="Licences" data-ui-aria="attribLabel" hidden></aside>
       </div>
     </div>
   </main>
@@ -220,6 +230,13 @@
   <footer class="neo-footer" data-footer-mode="app">
     Your decks and your review history stay in this browser. Nothing leaves it unless you sign in.
   </footer>
+
+  <!-- Live regions, present from load and empty. A region inserted with its
+       text already set is not reliably announced: that is why the first toast
+       was silent. showToast() finds this element by id rather than creating
+       one, so every toast is now spoken as well as seen. -->
+  <div id="announce" class="rp-visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+  <div id="app-toast" class="toast" role="status" aria-live="polite"></div>
 
   <script type="module" src="js/app.js"></script>
 </body>

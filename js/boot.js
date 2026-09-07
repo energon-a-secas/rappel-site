@@ -20,7 +20,16 @@ import { bindEvents } from './events.js';
 import { initKeys } from './keys.js';
 import { resumeSession, startSession } from './session.js';
 import { initAccount } from './account.js';
-import { showToast } from './utils.js';
+import { showToast, t, UI } from './utils.js';
+
+/**
+ * A toast in the visitor's language. The emitError() line beside each of these
+ * stays English on purpose: that one is addressed to the host page, not to the
+ * person reading the screen (C6.4).
+ */
+function say(key) {
+  showToast(t(UI[key], state.lang));
+}
 
 /**
  * Exactly one of deck, src or #d= is expected. Zero is an error in embed mode.
@@ -41,14 +50,14 @@ async function resolveDeck(cfg) {
   if (cfg.src) {
     if (!isAllowedDeckSrc(cfg.src, location.origin)) {
       emitError('deck-fetch-failed', 'A ?src= deck must be an https URL.');
-      showToast('A ?src= deck must be an https URL');
+      say('srcNotHttps');
       return null;
     }
     try {
       return await acceptDeck(await fetchJson(cfg.src), cfg.src);
     } catch (e) {
       emitError('deck-fetch-failed', `Could not fetch that deck: ${e.message}`);
-      showToast('Could not fetch that deck. It may be a CORS or a network problem.');
+      say('fetchFailed');
       return null;
     }
   }
@@ -56,7 +65,7 @@ async function resolveDeck(cfg) {
   const inline = decodeInlineDeck(cfg.inline);
   if (!inline) {
     emitError('deck-invalid', 'The deck in the fragment did not decode.');
-    showToast('The deck in that link did not decode');
+    say('inlineBad');
     return null;
   }
   return acceptDeck(inline, 'inline');

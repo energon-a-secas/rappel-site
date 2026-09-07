@@ -58,19 +58,15 @@ export const UI = {
   stateReview: { en: 'Review', es: 'Repaso' },
   stateRelearning: { en: 'Relearning', es: 'Reaprendiendo' },
   now: { en: 'now', es: 'ahora' },
-  // Deck rows
-  nextIn: { en: 'next in {0}', es: 'siguiente en {0}' },
-  nothingScheduled: { en: 'nothing scheduled', es: 'nada programado' },
-  pillDue: { en: '{0} due', es: '{0} pendientes' },
-  pillNew: { en: '{0} new', es: '{0} nuevas' },
-  pillCards: { en: '{0} cards', es: '{0} tarjetas' },
-  review: { en: 'Review', es: 'Repasar' },
+  // Deck rows. The three pills, the "next in" fragment, the version stamp's
+  // "built in" and the Review label went with the row they belonged to: one
+  // sentence per deck now, in the readout keys further down. Copy nothing
+  // renders is copy that drifts, and a translator would have paid for it.
   cram: { en: 'Cram', es: 'Práctica libre' },
   browse: { en: 'Browse', es: 'Explorar' },
   deckJson: { en: 'Deck JSON', es: 'JSON del mazo' },
   tsv: { en: 'TSV', es: 'TSV' },
   forget: { en: 'Forget', es: 'Olvidar' },
-  builtIn: { en: 'built in', es: 'integrado' },
   addBuiltin: { en: 'Add to my decks', es: 'Añadir a mis mazos' },
   // Library
   decks: { en: 'Decks', es: 'Mazos' },
@@ -170,14 +166,8 @@ export const UI = {
   },
   nothingDue: { en: 'Nothing is due in this deck right now.', es: 'Ahora mismo no hay nada pendiente en este mazo.' },
   sessionFinished: { en: 'Session finished', es: 'Sesión terminada' },
-  sessionSummary: {
-    en: '{0} answered, {1} again, {2} hard, {3} good, {4} easy.',
-    es: '{0} respondidas, {1} otra vez, {2} difícil, {3} bien, {4} fácil.',
-  },
   cramThis: { en: 'Cram this deck', es: 'Práctica libre con este mazo' },
   sessionCount: { en: '{0} of {1}', es: '{0} de {1}' },
-  cramTag: { en: ' · cram, nothing is saved', es: ' · práctica libre, no se guarda nada' },
-  end: { en: 'End', es: 'Terminar' },
   showAnswer: { en: 'Show answer', es: 'Mostrar la respuesta' },
   // The shortcut sheet (js/keys.js)
   keyFlipHint: { en: 'Spacebar, while a card is face down', es: 'Barra espaciadora, mientras la tarjeta está boca abajo' },
@@ -263,6 +253,100 @@ export const UI = {
     en: 'No built-in deck called "{0}" on this build',
     es: 'No hay ningún mazo integrado llamado "{0}" en esta versión',
   },
+
+  // ── Navigation and landmarks ──────────────────────────────────────────
+  // Names for the regions a screen reader lists, and the two skip links. A
+  // landmark with no name is announced as "navigation" and nothing else, which
+  // is no help on a page that has three of them.
+  navLabel: { en: 'Sections', es: 'Secciones' },
+  attribLabel: { en: 'Licences', es: 'Licencias' },
+  skipToContent: { en: 'Skip to content', es: 'Ir al contenido' },
+  skipToCard: { en: 'Skip to the card', es: 'Ir a la tarjeta' },
+
+  // ── Deck rows ─────────────────────────────────────────────────────────
+  // One sentence per row, and only one of the three is ever drawn. The accent
+  // is spent on deckReady alone, so a library of quiet decks has no colour in
+  // it and a deck with work waiting is the only thing that catches the eye.
+  study: { en: 'Study', es: 'Estudiar' },
+  deckReady: { en: '{0} to study now', es: '{0} para estudiar ahora' },
+  readoutSplit: { en: '{0} due, {1} new', es: '{0} pendientes, {1} nuevas' },
+  deckQuiet: { en: 'Nothing due. Next card in {0}.', es: 'Nada pendiente. Siguiente tarjeta en {0}.' },
+  deckUntouched: { en: 'Not started. {0} cards.', es: 'Sin empezar. {0} tarjetas.' },
+  moreActions: { en: 'More actions for {0}', es: 'Más acciones para {0}' },
+  deckVersion: { en: 'Version {0}', es: 'Versión {0}' },
+  storage: { en: 'Storage', es: 'Almacenamiento' },
+  forgetConfirm: {
+    en: 'Forget "{0}" and every review of it in this browser?',
+    es: '¿Olvidar "{0}" y todos sus repasos en este navegador?',
+  },
+  statsLead: {
+    en: 'Everything below is drawn from the review log in this browser.',
+    es: 'Todo lo de abajo se dibuja a partir del registro de repasos de este navegador.',
+  },
+
+  // ── The review surface, named for the keyboard and for a screen reader ──
+  endSession: { en: 'End session', es: 'Terminar la sesión' },
+  tapToReveal: { en: 'Tap to reveal', es: 'Toca para ver la respuesta' },
+  cardRegion: { en: 'Card {0} of {1}', es: 'Tarjeta {0} de {1}' },
+  announceFront: { en: 'Card {0} of {1}: {2}', es: 'Tarjeta {0} de {1}: {2}' },
+  progressText: { en: '{0} of {1} answered', es: '{0} de {1} respondidas' },
+  // A reveal is announced as the answer, never as bare text: on a basic or a
+  // cloze card the back read out on its own ("good morning") is word for word
+  // what a new front sounds like, and a reader could not tell them apart.
+  answerIs: { en: 'Answer: {0}', es: 'Respuesta: {0}' },
+  gradesHint: {
+    en: 'Arrow keys move, 1 to 4 grade, Enter or Space confirms',
+    es: 'Las flechas mueven, 1 a 4 califican, Enter o espacio confirma',
+  },
+  sessionDone: {
+    en: 'Session done. Every card that was due has been seen.',
+    es: 'Sesión terminada. Se han visto todas las tarjetas pendientes.',
+  },
+
+  // ── The strings that used to be English-only ──────────────────────────
+  // Written as literals in js/events.js and js/boot.js, so a Spanish visitor
+  // read English at every point where something actually happened to their
+  // data. They live here now; the call sites resolve them through t().
+  ledgerSaved: {
+    en: 'Ledger downloaded, card state and full review log',
+    es: 'Registro descargado, estado de las tarjetas y registro completo de repasos',
+  },
+  settingsSaved: {
+    en: 'Saved. New intervals use these from the next answer on.',
+    es: 'Guardado. Los nuevos intervalos usan estos valores a partir de la siguiente respuesta.',
+  },
+  settingsReset: {
+    en: 'Back to the 21 published FSRS-6 defaults',
+    es: 'De vuelta a los 21 valores predeterminados publicados de FSRS-6',
+  },
+  paramsRejected: { en: 'Parameters rejected: {0}', es: 'Parámetros rechazados: {0}' },
+  imported: { en: 'Imported {0} notes into "{1}"', es: 'Se importaron {0} notas en "{1}"' },
+  restored: {
+    en: 'Restored {0} card rows and {1} log entries',
+    es: 'Se restauraron {0} filas de tarjetas y {1} entradas del registro',
+  },
+  notValidJson: { en: 'Not valid JSON: {0}', es: 'No es JSON válido: {0}' },
+  audioMissing: {
+    en: 'That audio file is not in this deck folder',
+    es: 'Ese archivo de audio no está en la carpeta del mazo',
+  },
+  srcNotHttps: { en: 'A ?src= deck must be an https URL', es: 'Un mazo ?src= tiene que ser una URL https' },
+  fetchFailed: {
+    en: 'Could not fetch that deck. It may be a CORS or a network problem.',
+    es: 'No se pudo descargar ese mazo. Puede ser un problema de CORS o de red.',
+  },
+  inlineBad: { en: 'The deck in that link did not decode', es: 'El mazo de ese enlace no se pudo decodificar' },
+
+  // ── The card itself: the tag, the answer box, what you produced ────────
+  cramBadge: { en: 'Cram, nothing is saved', es: 'Práctica libre, no se guarda nada' },
+  kanaMode: {
+    en: 'Romaji becomes kana as you type',
+    es: 'El romaji se convierte en kana mientras escribes',
+  },
+  youWrote: { en: 'You wrote {0}', es: 'Escribiste {0}' },
+  // A choice card is picked from four buttons, so "You wrote thank you" was
+  // describing something the learner did not do.
+  youPicked: { en: 'You picked {0}', es: 'Elegiste {0}' },
 };
 
 /** base64url of a UTF-8 string. */

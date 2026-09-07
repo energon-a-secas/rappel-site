@@ -17,10 +17,21 @@ import { parseParams } from './fsrs.js';
 import { defaultScheduler } from './scheduler.js';
 import { emitDue, emitResize } from './embed.js';
 import { ensureTransforms, transformsReady } from './transforms.js';
-import { showToast, $ } from './utils.js';
+import { deckName } from './deck.js';
+import { showToast, $, t, fill, UI } from './utils.js';
 
 function deckOf(el) {
   return el?.dataset?.deck || state.activeDeckId;
+}
+
+/**
+ * Every sentence a learner reads out of this file, in the language they chose.
+ * These were English literals, so a Spanish visitor got English at each point
+ * where something actually happened to their data: a deck forgotten, a ledger
+ * downloaded, an import landed, settings reset.
+ */
+function L(key, ...args) {
+  return fill(t(UI[key], state.lang), ...args);
 }
 
 // gradeCard awaits the review-log write; a second press inside that window
@@ -46,7 +57,7 @@ async function onAct(act, el) {
       break;
     case 'forget': {
       const id = deckOf(el);
-      if (!window.confirm('Forget this deck and every review of it in this browser?')) return;
+      if (!window.confirm(L('forgetConfirm', deckName(state.decks[id], state.lang)))) return;
       // The prompt promises the reviews too, so the reviews go. forgetDeck()
       // drops the deck and its card rows from localStorage; the log lives in
       // IndexedDB and has to be told separately, or a "forget" leaves the
@@ -65,7 +76,7 @@ async function onAct(act, el) {
       return;
     case 'export-ledger':
       await downloadLedger({ log: true });
-      showToast('Ledger downloaded, card state and full review log');
+      showToast(L('ledgerSaved'));
       return;
     case 'add-builtin': {
       const added = await loadBuiltin(el.dataset.deck);
@@ -112,12 +123,12 @@ async function onAct(act, el) {
       }
       if (!state.session) return;
       state.session.lastVerdict = null;
-      if (!currentCard()) {
-        // renderCard() paints nothing without a session, so go somewhere.
-        endSession();
-        state.view = 'library';
-        showToast('Session done. Every card that was due has been seen.');
-      }
+      // renderCard() keeps its own snapshot of the session and draws the
+      // results screen from it once the session is gone, which is what the
+      // keyboard path has always relied on. Leaving for the library with a
+      // toast instead meant a learner who graded with the mouse, with Enter or
+      // with Space never saw their own results at all.
+      if (!currentCard()) endSession();
       break;
     }
     case 'end-session':
@@ -130,7 +141,7 @@ async function onAct(act, el) {
     case 'reset-settings':
       state.scheduler = defaultScheduler();
       savePrefs();
-      showToast('Back to the 21 published FSRS-6 defaults');
+      showToast(L('settingsReset'));
       break;
     case 'lang':
       state.lang = el.dataset.lang === 'es' ? 'es' : 'en';
@@ -156,7 +167,7 @@ function saveSettings() {
   const hour = Number.parseInt($('setHour')?.value, 10);
   const parsed = parseParams($('setParams')?.value || '');
   if (!parsed.ok) {
-    showToast(`Parameters rejected: ${parsed.error}`);
+    showToast(L('paramsRejected', parsed.error));
     return;
   }
   state.scheduler = {
@@ -168,7 +179,7 @@ function saveSettings() {
     day_start_hour: Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : 4,
   };
   savePrefs();
-  showToast('Saved. New intervals use these from the next answer on.');
+  showToast(L('settingsSaved'));
 }
 
 function readSteps(text, fallback) {
@@ -191,7 +202,7 @@ async function runImport() {
   closeModal('importModal');
   state.view = 'library';
   await render();
-  showToast(`Imported ${result.notes} notes into "${added.id}"`);
+  showToast(L('imported', result.notes, added.id));
   emitResize();
 }
 
@@ -203,7 +214,7 @@ async function runRestore() {
     doc = JSON.parse(text);
   } catch (e) {
     const note = $('restoreNote');
-    if (note) note.textContent = `Not valid JSON: ${e.message}`;
+    if (note) note.textContent = L('notValidJson', e.message);
     return;
   }
   const res = await restoreLedger(doc, strategy);
@@ -214,7 +225,7 @@ async function runRestore() {
   }
   closeModal('restoreModal');
   await render();
-  showToast(`Restored ${res.cards} card rows and ${res.log} log entries`);
+  showToast(L('restored', res.cards, res.log));
 }
 
 function onFile(input, target) {
@@ -335,6 +346,6 @@ export function bindEvents() {
     const btn = e.target.closest('.rp-media-audio');
     if (!btn) return;
     const audio = new Audio(btn.dataset.audio);
-    audio.play().catch(() => showToast('That audio file is not in this deck folder'));
+    audio.play().catch(() => showToast(L('audioMissing')));
   });
 }

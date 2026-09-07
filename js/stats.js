@@ -61,10 +61,16 @@ export function heatGrid(counts, weeks = 18, now = Date.now()) {
   end.setDate(end.getDate() - offsetToMonday);
   const grid = Array.from({ length: 7 }, () => Array(weeks).fill(0));
   const cols = [];
+  // A label every fourth column is a label per 28 days over months of 30 and
+  // 31, so eighteen weeks printed "Aug" twice and skipped a month between.
+  // The column that opens a month is the one that gets named.
+  let labelled = null;
   for (let c = 0; c < weeks; c += 1) {
     const monday = new Date(end);
     monday.setDate(monday.getDate() - (weeks - 1 - c) * 7);
-    cols.push(c % 4 === 0 ? monday.toLocaleDateString(undefined, { month: 'short' }) : '');
+    const month = monday.getMonth();
+    cols.push(month === labelled ? '' : monday.toLocaleDateString(state.lang === 'es' ? 'es' : undefined, { month: 'short' }));
+    labelled = month;
     for (let r = 0; r < 7; r += 1) {
       const day = new Date(monday);
       day.setDate(day.getDate() + r);
@@ -151,7 +157,7 @@ function historyElsewhereCard(gap) {
   const n = gap.elsewhere;
   const count = L(n === 1 ? 'reviewCountOne' : 'reviewCountMany', n);
   const tail = L(gap.here === 0 ? 'elsewhereYet' : 'elsewhereThose');
-  return `<div class="card rp-empty rp-elsewhere">
+  return `<div class="rp-panel rp-elsewhere">
     <h3>${escHtml(L('historyElsewhereTitle'))}</h3>
     <p>${escHtml(L('historyElsewhereBody', count, tail))}</p>
     <p>${escHtml(L('historyElsewhereHow'))}</p>
@@ -213,7 +219,17 @@ export async function renderStats() {
       : viz.empty(L('recallNeedsTen'), { title: L('recallOverTime') }));
   }
 
-  return `<div class="stack stack--tight">${cards.join('')}</div>`;
+  // The screen had no heading of its own: the h1 in the header bar is the site,
+  // not this view, so a reader arriving here was told nothing about where it
+  // had landed and "Skip to content" had no target. Every view now carries
+  // exactly one h2, and render.js focuses it.
+  return `<section class="section" aria-labelledby="statsTitle">
+    <div class="section__titles">
+      <h2 class="section__title" id="statsTitle" tabindex="-1">${escHtml(L('stats'))}</h2>
+      <p class="section__lead">${escHtml(L('statsLead'))}</p>
+    </div>
+    <div class="stack stack--tight rp-charts">${cards.join('')}</div>
+  </section>`;
 }
 
 /** The inline trend beside a deck in the library. */
