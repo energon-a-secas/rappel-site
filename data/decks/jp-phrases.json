@@ -17,13 +17,13 @@
 ],
 "templates": [
 {"id":"recognition","kind":"basic","skill":"vocab.phrases.read","front":"{{Word}}","back":"{{Meaning}}"},
-{"id":"recall","kind":"typed","skill":"vocab.phrases.write","answer_field":"Kana","front":"{{Meaning}}","back":"{{Kana}}","transform":"kana","compare":"trim|kana"},
+{"id":"recall","kind":"typed","skill":"vocab.phrases.write","answer_field":"Kana","front":"{{Meaning}} ({{Group}})","back":"{{Kana}}","transform":"kana","compare":"trim|kana"},
 {"id":"pick","kind":"choice","skill":"vocab.phrases.read","answer_field":"Meaning","front":"{{Word}}","distractors":"sample-from-deck","count":4}
 ],
 "_licence": { "source": "JMdict / EDICT, Electronic Dictionary Research and Development Group", "url": "https://www.edrdg.org/edrdg/licence.html", "spdx": "CC-BY-SA-4.0", "derived": true, "id": "edrdg", "acknowledgement": "This site uses the JMdict/EDICT and KANJIDIC dictionary files. These files are the property of the Electronic Dictionary Research and Development Group, and are used in conformance with the Group's licence.", "links": [ "https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project", "https://www.edrdg.org/wiki/index.php/KANJIDIC_Project" ], "screen": "required", "chapter": "14-phrases", "generated_by": "tools/build-decks.mjs", "generated_at": "2026-09-04" },
 "notes": [
 {"id":"n_0001","f":{"Word":"どういたしまして","Kana":"どういたしまして","Meaning":"you're welcome; don't mention it; not at all","Group":"Answering a greeting"},"tags":["greetings-exp"],"templates":["recognition","recall","pick"]},
-{"id":"n_0002","f":{"Word":"おかげさまで","Kana":"おかげさまで","Meaning":"thankfully; fortunately; luckily / thanks to your (his, their, everyone's, etc.) kindness; thanks to your assistance; thanks to your support","Group":"Answering a greeting"},"tags":["greetings-exp"],"templates":["recognition","recall","pick"]},
+{"id":"n_0002","f":{"Word":"おかげさまで","Kana":"おかげさまで","Meaning":"thanks to your (his, their, everyone's, etc.) kindness; thanks to your assistance; thanks to your support","Group":"Answering a greeting"},"tags":["greetings-exp"],"templates":["recognition","recall","pick"]},
 {"id":"n_0003","f":{"Word":"お疲れ様","Kana":"おつかれさま","Meaning":"thank you (for your hard work); good work / see you; goodbye; goodnight","Group":"Answering a greeting"},"tags":["greetings-exp"],"templates":["recognition","recall","pick"]},
 {"id":"n_0004","f":{"Word":"久しぶり","Kana":"ひさしぶり","Meaning":"it's been a long time; long time no see","Group":"Answering a greeting"},"tags":["greetings-exp"],"templates":["recognition","recall","pick"]},
 {"id":"n_0005","f":{"Word":"いらっしゃいませ","Kana":"いらっしゃいませ","Meaning":"welcome","Group":"Answering a greeting"},"tags":["greetings-exp"],"templates":["recognition","recall","pick"]},
@@ -45,7 +45,7 @@
 {"id":"n_0021","f":{"Word":"ごめんください","Kana":"ごめんください","Meaning":"may I come in? / please forgive me; I'm sorry","Group":"Saying who you are"},"tags":["intro-exp"],"templates":["recognition","recall","pick"]},
 {"id":"n_0022","f":{"Word":"お邪魔します","Kana":"おじゃまします","Meaning":"please excuse the intrusion; I'm coming in","Group":"Saying who you are"},"tags":["intro-exp"],"templates":["recognition","recall","pick"]},
 {"id":"n_0023","f":{"Word":"お礼","Kana":"おれい","Meaning":"thanks; gratitude / manners; etiquette","Group":"Thanking and apologising"},"tags":["thanks"],"templates":["recognition","recall","pick"]},
-{"id":"n_0024","f":{"Word":"感謝","Kana":"かんしゃ","Meaning":"thanks; gratitude; appreciation","Group":"Thanking and apologising"},"tags":["thanks"],"templates":["recognition","recall","pick"]},
+{"id":"n_0024","f":{"Word":"お詫び","Kana":"おわび","Meaning":"apology","Group":"Thanking and apologising"},"tags":["thanks"],"templates":["recognition","recall","pick"]},
 {"id":"n_0025","f":{"Word":"親切","Kana":"しんせつ","Meaning":"kind; gentle; considerate","Group":"Thanking and apologising"},"tags":["thanks"],"templates":["recognition","recall","pick"]},
 {"id":"n_0026","f":{"Word":"迷惑","Kana":"めいわく","Meaning":"trouble; bother; annoyance","Group":"Thanking and apologising"},"tags":["thanks"],"templates":["recognition","recall","pick"]},
 {"id":"n_0027","f":{"Word":"失礼","Kana":"しつれい","Meaning":"discourtesy; impoliteness","Group":"Thanking and apologising"},"tags":["thanks"],"templates":["recognition","recall","pick"]},
@@ -56,7 +56,7 @@
 {"id":"n_0032","f":{"Word":"ありがとうございました","Kana":"ありがとうございました","Meaning":"thank you","Group":"Thanking, and saying sorry"},"tags":["thanks-exp"],"templates":["recognition","recall","pick"]},
 {"id":"n_0033","f":{"Word":"失礼しました","Kana":"しつれいしました","Meaning":"my apologies; I'm sorry; excuse me","Group":"Thanking, and saying sorry"},"tags":["thanks-exp"],"templates":["recognition","recall","pick"]},
 {"id":"n_0034","f":{"Word":"お手数ですが","Kana":"おてすうですが","Meaning":"sorry to bother you, but ...","Group":"Thanking, and saying sorry"},"tags":["thanks-exp"],"templates":["recognition","recall","pick"]},
-{"id":"n_0035","f":{"Word":"とんでもない","Kana":"とんでもない","Meaning":"absolutely not!; far from it!; impossible! / (it was) no bother at all; not at all; don't mention it","Group":"Thanking, and saying sorry"},"tags":["thanks-exp"],"templates":["recognition","recall","pick"]},
+{"id":"n_0035","f":{"Word":"とんでもない","Kana":"とんでもない","Meaning":"(it was) no bother at all; not at all; don't mention it","Group":"Thanking, and saying sorry"},"tags":["thanks-exp"],"templates":["recognition","recall","pick"]},
 {"id":"n_0036","f":{"Word":"すまない","Kana":"すまない","Meaning":"excuse me; (I'm) sorry; thank you","Group":"Thanking, and saying sorry"},"tags":["thanks-exp"],"templates":["recognition","recall","pick"]},
 {"id":"n_0037","f":{"Word":"教科書","Kana":"きょうかしょ","Meaning":"textbook; coursebook; schoolbook","Group":"In the classroom"},"tags":["classroom"],"templates":["recognition","recall","pick"]},
 {"id":"n_0038","f":{"Word":"鉛筆","Kana":"えんぴつ","Meaning":"(wooden) pencil","Group":"In the classroom"},"tags":["classroom"],"templates":["recognition","recall","pick"]},
@@ -70,7 +70,7 @@
 {"id":"n_0046","f":{"Word":"えっと","Kana":"えっと","Meaning":"let me see; well; errr ...","Group":"Asking for a repeat"},"tags":["classroom-exp"],"templates":["recognition","recall","pick"]},
 {"id":"n_0047","f":{"Word":"ええ","Kana":"ええ","Meaning":"yes; that is correct; right / um; errr; well","Group":"Asking for a repeat"},"tags":["classroom-exp"],"templates":["recognition","recall","pick"]},
 {"id":"n_0048","f":{"Word":"なるほど","Kana":"なるほど","Meaning":"I see; that's right; indeed","Group":"Asking for a repeat"},"tags":["classroom-exp"],"templates":["recognition","recall","pick"]},
-{"id":"n_0049","f":{"Word":"ちょっと","Kana":"ちょっと","Meaning":"hey!; come on; excuse me","Group":"Asking for a repeat"},"tags":["classroom-exp"],"templates":["recognition","recall","pick"]},
+{"id":"n_0049","f":{"Word":"ちょっと","Kana":"ちょっと","Meaning":"thanks, but no; not feasible; not possible","Group":"Asking for a repeat"},"tags":["classroom-exp"],"templates":["recognition","recall","pick"]},
 {"id":"n_0050","f":{"Word":"了解","Kana":"りょうかい","Meaning":"OK; roger","Group":"Asking for a repeat"},"tags":["classroom-exp"],"templates":["recognition","recall","pick"]},
 {"id":"n_0051","f":{"Word":"店","Kana":"みせ","Meaning":"store; shop; establishment","Group":"In a shop"},"tags":["shopping"],"templates":["recognition","recall","pick"]},
 {"id":"n_0052","f":{"Word":"値段","Kana":"ねだん","Meaning":"price; cost","Group":"In a shop"},"tags":["shopping"],"templates":["recognition","recall","pick"]},
@@ -84,7 +84,7 @@
 {"id":"n_0060","f":{"Word":"ちょうだい","Kana":"ちょうだい","Meaning":"please (give me; do for me)","Group":"Asking the price"},"tags":["shopping-exp"],"templates":["recognition","recall","pick"]},
 {"id":"n_0061","f":{"Word":"毎度","Kana":"まいど","Meaning":"thank you for your continued patronage; thank you for your support; greetings! / hello; I'm coming in","Group":"Asking the price"},"tags":["shopping-exp"],"templates":["recognition","recall","pick"]},
 {"id":"n_0062","f":{"Word":"お願いいたします","Kana":"おねがいいたします","Meaning":"please","Group":"Asking the price"},"tags":["shopping-exp"],"templates":["recognition","recall","pick"]},
-{"id":"n_0063","f":{"Word":"大丈夫","Kana":"だいじょうぶ","Meaning":"no thanks; I'm good; that's alright","Group":"Asking the price"},"tags":["shopping-exp"],"templates":["recognition","recall","pick"]},
+{"id":"n_0063","f":{"Word":"大丈夫","Kana":"だいじょうぶ","Meaning":"all right; alright","Group":"Asking the price"},"tags":["shopping-exp"],"templates":["recognition","recall","pick"]},
 {"id":"n_0064","f":{"Word":"どうも","Kana":"どうも","Meaning":"thank you; thanks / greetings; hello; goodbye","Group":"Asking the price"},"tags":["shopping-exp"],"templates":["recognition","recall","pick"]}
 ]
 }
