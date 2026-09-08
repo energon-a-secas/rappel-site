@@ -23,17 +23,17 @@
 "_licence": { "source": "JMdict / EDICT, Electronic Dictionary Research and Development Group", "url": "https://www.edrdg.org/edrdg/licence.html", "spdx": "CC-BY-SA-4.0", "derived": true, "id": "edrdg", "acknowledgement": "This site uses the JMdict/EDICT and KANJIDIC dictionary files. These files are the property of the Electronic Dictionary Research and Development Group, and are used in conformance with the Group's licence.", "links": [ "https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project", "https://www.edrdg.org/wiki/index.php/KANJIDIC_Project" ], "screen": "required", "chapter": "5-grammar", "generated_by": "tools/build-decks.mjs", "generated_at": "2026-09-04" },
 "notes": [
 {"id":"n_0001","f":{"Word":"は","Kana":"は","Meaning":"indicates sentence topic / indicates contrast with another option (stated or unstated)","Group":"Particles"},"tags":["particles"],"templates":["recognition","recall","pick"]},
-{"id":"n_0002","f":{"Word":"が","Kana":"が","Meaning":"indicates the subject of a sentence / indicates possession","Group":"Particles"},"tags":["particles"],"templates":["recognition","recall","pick"]},
+{"id":"n_0002","f":{"Word":"が","Kana":"が","Meaning":"indicates the subject of a sentence","Group":"Particles"},"tags":["particles"],"templates":["recognition","recall","pick"]},
 {"id":"n_0003","f":{"Word":"を","Kana":"を","Meaning":"indicates direct object of action / indicates subject of causative expression","Group":"Particles"},"tags":["particles"],"templates":["recognition","recall","pick"]},
 {"id":"n_0004","f":{"Word":"に","Kana":"に","Meaning":"at; in; on / to; toward; into","Group":"Particles"},"tags":["particles"],"templates":["recognition","recall","pick"]},
 {"id":"n_0005","f":{"Word":"で","Kana":"で","Meaning":"at; in / at; when","Group":"Particles"},"tags":["particles"],"templates":["recognition","recall","pick"]},
 {"id":"n_0006","f":{"Word":"へ","Kana":"へ","Meaning":"to; towards; for","Group":"Particles"},"tags":["particles"],"templates":["recognition","recall","pick"]},
-{"id":"n_0007","f":{"Word":"と","Kana":"と","Meaning":"if; when / and","Group":"Particles"},"tags":["particles"],"templates":["recognition","recall","pick"]},
+{"id":"n_0007","f":{"Word":"と","Kana":"と","Meaning":"and / if; when","Group":"Particles"},"tags":["particles"],"templates":["recognition","recall","pick"]},
 {"id":"n_0008","f":{"Word":"も","Kana":"も","Meaning":"too; also; in addition / both A and B; A as well as B; neither A nor B (in a negative sentence)","Group":"Particles"},"tags":["particles"],"templates":["recognition","recall","pick"]},
 {"id":"n_0009","f":{"Word":"の","Kana":"の","Meaning":"indicates possessive / nominalizes verbs and adjectives","Group":"Particles"},"tags":["particles"],"templates":["recognition","recall","pick"]},
 {"id":"n_0010","f":{"Word":"か","Kana":"か","Meaning":"indicates a question / indicates an embedded question; indicates an indirect question","Group":"Particles"},"tags":["particles"],"templates":["recognition","recall","pick"]},
 {"id":"n_0011","f":{"Word":"ね","Kana":"ね","Meaning":"right?; isn't it?; doesn't it? / you know; you see; I must say","Group":"Particles"},"tags":["particles"],"templates":["recognition","recall","pick"]},
-{"id":"n_0012","f":{"Word":"よ","Kana":"よ","Meaning":"hey; you / hey","Group":"Particles"},"tags":["particles"],"templates":["recognition","recall","pick"]},
+{"id":"n_0012","f":{"Word":"よ","Kana":"よ","Meaning":"(at the end of a sentence) emphasis; I'm telling you / hey; you","Group":"Particles"},"tags":["particles"],"templates":["recognition","recall","pick"]},
 {"id":"n_0013","f":{"Word":"から","Kana":"から","Meaning":"from; since; at / through (e.g. a window, door); via; by","Group":"Particles"},"tags":["particles"],"templates":["recognition","recall","pick"]},
 {"id":"n_0014","f":{"Word":"まで","Kana":"まで","Meaning":"until (a time); till; to / to (a place or person); as far as","Group":"Particles"},"tags":["particles"],"templates":["recognition","recall","pick"]},
 {"id":"n_0015","f":{"Word":"です","Kana":"です","Meaning":"be; is","Group":"To be"},"tags":["copula"],"templates":["recognition","recall","pick"]},
@@ -79,6 +79,6 @@
 {"id":"n_0055","f":{"Word":"どこ","Kana":"どこ","Meaning":"where; what place / how much (long, far); what extent","Group":"Pointing and asking"},"tags":["pointing"],"templates":["recognition","recall","pick"]},
 {"id":"n_0056","f":{"Word":"いつ","Kana":"いつ","Meaning":"when; at what time; how soon / normal times; ordinary days","Group":"Pointing and asking"},"tags":["pointing"],"templates":["recognition","recall","pick"]},
 {"id":"n_0057","f":{"Word":"どう","Kana":"どう","Meaning":"how; in what way; how about","Group":"Pointing and asking"},"tags":["pointing"],"templates":["recognition","recall","pick"]},
-{"id":"n_0058","f":{"Word":"どうして","Kana":"どうして","Meaning":"how; in what way; by what means / why; for what reason; for what purpose","Group":"Pointing and asking"},"tags":["pointing"],"templates":["recognition","recall","pick"]}
+{"id":"n_0058","f":{"Word":"どうして","Kana":"どうして","Meaning":"why; for what reason; for what purpose / how; in what way; by what means","Group":"Pointing and asking"},"tags":["pointing"],"templates":["recognition","recall","pick"]}
 ]
 }

@@ -1,0 +1,49 @@
+{
+"format": "neo-deck/1",
+"id": "jp-register",
+"version": "2026-09-04",
+"name": { "en": "Politeness, three distances", "es": "Cortesía, tres distancias" },
+"lang": { "front": "ja", "back": "en" },
+"licence": "CC-BY-SA-4.0",
+"attribution": "This site uses the JMdict/EDICT and KANJIDIC dictionary files. These files are the property of the Electronic Dictionary Research and Development Group, and are used in conformance with the Group's licence.",
+"source": "https://www.edrdg.org/edrdg/licence.html",
+"screen": "required",
+"media_base": "media/",
+"fields": [
+"Word",
+"Kana",
+"Meaning",
+"Group"
+],
+"templates": [
+{"id":"recognition","kind":"basic","skill":"vocab.register.read","front":"{{Word}}","back":"{{Meaning}}"},
+{"id":"recall","kind":"typed","skill":"vocab.register.write","answer_field":"Kana","front":"{{Meaning}}","back":"{{Kana}}","transform":"kana","compare":"trim|kana"},
+{"id":"pick","kind":"choice","skill":"vocab.register.read","answer_field":"Meaning","front":"{{Word}}","distractors":"sample-from-deck","count":4}
+],
+"_licence": { "source": "JMdict / EDICT, Electronic Dictionary Research and Development Group", "url": "https://www.edrdg.org/edrdg/licence.html", "spdx": "CC-BY-SA-4.0", "derived": true, "id": "edrdg", "acknowledgement": "This site uses the JMdict/EDICT and KANJIDIC dictionary files. These files are the property of the Electronic Dictionary Research and Development Group, and are used in conformance with the Group's licence.", "links": [ "https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project", "https://www.edrdg.org/wiki/index.php/KANJIDIC_Project" ], "screen": "required", "chapter": "11-conversation", "generated_by": "tools/build-decks.mjs", "generated_at": "2026-09-04" },
+"notes": [
+{"id":"n_0001","f":{"Word":"見る","Kana":"みる","Meaning":"to see; to look; to watch / to examine; to look over; to assess","Group":"The same act at three distances"},"tags":["register"],"templates":["recognition","recall","pick"]},
+{"id":"n_0002","f":{"Word":"ご覧になる","Kana":"ごらんになる","Meaning":"to see; to look; to watch","Group":"The same act at three distances"},"tags":["register"],"templates":["recognition","recall","pick"]},
+{"id":"n_0003","f":{"Word":"拝見","Kana":"はいけん","Meaning":"seeing; looking at","Group":"The same act at three distances"},"tags":["register"],"templates":["recognition","recall","pick"]},
+{"id":"n_0004","f":{"Word":"言う","Kana":"いう","Meaning":"to say; to utter; to declare / to name; to call","Group":"The same act at three distances"},"tags":["register"],"templates":["recognition","recall","pick"]},
+{"id":"n_0005","f":{"Word":"おっしゃる","Kana":"おっしゃる","Meaning":"to say; to speak; to tell / to be called","Group":"The same act at three distances"},"tags":["register"],"templates":["recognition","recall","pick"]},
+{"id":"n_0006","f":{"Word":"申す","Kana":"もうす","Meaning":"to say; to be called / to do","Group":"The same act at three distances"},"tags":["register"],"templates":["recognition","recall","pick"]},
+{"id":"n_0007","f":{"Word":"食べる","Kana":"たべる","Meaning":"to eat / to live on (e.g. a salary); to live off; to subsist on","Group":"The same act at three distances"},"tags":["register"],"templates":["recognition","recall","pick"]},
+{"id":"n_0008","f":{"Word":"召し上がる","Kana":"めしあがる","Meaning":"to eat; to drink","Group":"The same act at three distances"},"tags":["register"],"templates":["recognition","recall","pick"]},
+{"id":"n_0009","f":{"Word":"頂く","Kana":"いただく","Meaning":"to receive; to get; to accept / to eat; to drink","Group":"The same act at three distances"},"tags":["register"],"templates":["recognition","recall","pick"]},
+{"id":"n_0010","f":{"Word":"する","Kana":"する","Meaning":"to do; to carry out; to perform / to cause to become; to make (into); to turn (into)","Group":"The same act at three distances"},"tags":["register"],"templates":["recognition","recall","pick"]},
+{"id":"n_0011","f":{"Word":"なさる","Kana":"なさる","Meaning":"to do","Group":"The same act at three distances"},"tags":["register"],"templates":["recognition","recall","pick"]},
+{"id":"n_0012","f":{"Word":"致す","Kana":"いたす","Meaning":"to do","Group":"The same act at three distances"},"tags":["register"],"templates":["recognition","recall","pick"]},
+{"id":"n_0013","f":{"Word":"行く","Kana":"いく","Meaning":"to go; to move (towards); to head (towards) / to move through; to travel across; to walk along (e.g. a road)","Group":"The same act at three distances"},"tags":["register"],"templates":["recognition","recall","pick"]},
+{"id":"n_0014","f":{"Word":"いらっしゃる","Kana":"いらっしゃる","Meaning":"to come; to go; to be (somewhere) / to be (doing)","Group":"The same act at three distances"},"tags":["register"],"templates":["recognition","recall","pick"]},
+{"id":"n_0015","f":{"Word":"伺う","Kana":"うかがう","Meaning":"to call on someone; to call at a place; to pay a visit / to ask; to inquire","Group":"The same act at three distances"},"tags":["register"],"templates":["recognition","recall","pick"]},
+{"id":"n_0016","f":{"Word":"知る","Kana":"しる","Meaning":"to know; to be aware (of); to be conscious (of) / to sense; to feel; to notice","Group":"The same act at three distances"},"tags":["register"],"templates":["recognition","recall","pick"]},
+{"id":"n_0017","f":{"Word":"ご存じ","Kana":"ごぞんじ","Meaning":"knowing; being aware (of) / (an) acquaintance","Group":"The same act at three distances"},"tags":["register"],"templates":["recognition","recall","pick"]},
+{"id":"n_0018","f":{"Word":"存じる","Kana":"ぞんじる","Meaning":"to know; to be aware (of); to be acquainted (with) / to think; to consider; to believe","Group":"The same act at three distances"},"tags":["register"],"templates":["recognition","recall","pick"]},
+{"id":"n_0019","f":{"Word":"かしこまりました","Kana":"かしこまりました","Meaning":"certainly!; very well; with pleasure","Group":"Work and the telephone"},"tags":["work"],"templates":["recognition","recall","pick"]},
+{"id":"n_0020","f":{"Word":"もしもし","Kana":"もしもし","Meaning":"hello (e.g. on phone) / excuse me! (when calling out to someone)","Group":"Work and the telephone"},"tags":["work"],"templates":["recognition","recall","pick"]},
+{"id":"n_0021","f":{"Word":"お待たせしました","Kana":"おまたせしました","Meaning":"thank you for waiting; sorry to have kept you waiting","Group":"Work and the telephone"},"tags":["work"],"templates":["recognition","recall","pick"]},
+{"id":"n_0022","f":{"Word":"申し訳ありません","Kana":"もうしわけありません","Meaning":"I'm sorry; (it's) inexcusable / thank you very much (for help, etc.)","Group":"Work and the telephone"},"tags":["work"],"templates":["recognition","recall","pick"]},
+{"id":"n_0023","f":{"Word":"ご苦労様","Kana":"ごくろうさま","Meaning":"thank you (for your hard work); I appreciate your efforts","Group":"Work and the telephone"},"tags":["work"],"templates":["recognition","recall","pick"]}
+]
+}
