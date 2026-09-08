@@ -6,7 +6,7 @@
  * must never have to care where the exporter kept them (C5.3 amendment 5).
  */
 
-import { state, deckLedger, saveLedger, persists } from './state.js';
+import { state, deckLedger, saveLedger, persists, deckPersists } from './state.js';
 import { readAll, appendMany, clearDeck } from './ledger-log.js';
 import { validateLedger } from './validate-deck.js';
 import { LEDGER_FORMAT } from './validate-deck.js';
@@ -31,7 +31,11 @@ export async function buildLedgerDocument(opts = {}) {
   }
 
   if (wantLog) {
-    const all = persists() ? await readAll() : state.memLog;
+    // Both halves, always. state.memLog is empty on the ordinary path; what it
+    // holds is the history of a deck this frame may not persist (C12 A19) and
+    // of any write IndexedDB refused, and an export that dropped either would
+    // be the only copy of that history going missing.
+    const all = persists() ? mergeLogs(await readAll(), state.memLog) : state.memLog;
     for (const entry of all) {
       const { deck, ...rest } = entry;
       if (only && deck !== only) continue;
@@ -47,6 +51,20 @@ export async function buildLedgerDocument(opts = {}) {
     scheduler: { ...state.scheduler, w: [...state.scheduler.w] },
     decks,
   };
+}
+
+/** Two log lists as one, oldest first, without repeating a (deck, t) pair. */
+function mergeLogs(stored, extra) {
+  if (!extra.length) return stored;
+  const seen = new Set(stored.map((e) => `${e.deck}\u0000${e.t}`));
+  const out = [...stored];
+  for (const e of extra) {
+    const key = `${e.deck}\u0000${e.t}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(e);
+  }
+  return out.sort((a, b) => a.t - b.t);
 }
 
 /**
@@ -86,7 +104,9 @@ export async function restoreLedger(doc, strategy = 'merge') {
       }
     }
     if (Array.isArray(group.log) && group.log.length) {
-      if (persists()) {
+      // deckPersists(), not persists(): a restore must not be the way a deck
+      // the engine may not write gets its history onto this origin's disk.
+      if (deckPersists(deckId)) {
         // The store is keyed by (deck, t), so re-importing the same export is a
         // no-op rather than a duplicate. Idempotent by construction.
         logged += await appendMany(deckId, group.log);

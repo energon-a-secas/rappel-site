@@ -12,6 +12,7 @@
 import { state, ledgerBytes, LEDGER_LIMIT_BYTES } from './state.js';
 import { expandCards, deckName, needsAttribution } from './deck.js';
 import { deckCounts } from './ledger.js';
+import { isPersonalDeckId } from './validate-deck.js';
 import { renderStats } from './stats.js';
 import { renderCard } from './render-session.js';
 import { renderBrowse } from './render-browse.js';
@@ -372,11 +373,11 @@ function deckReadout(deck) {
   return { text: c.nextDueAt ? L('deckQuiet', humanGap(c.nextDueAt - Date.now())) : L('deckUntouched', c.total), ready: false, split: '' };
 }
 /** One library row. A shelf deck is the same object in another state. */
-function libraryRow({ id, name, readout, ready = false, split = '', act, label, menu = '' }) {
+function libraryRow({ id, name, readout, ready = false, split = '', act, label, menu = '', note = '' }) {
   const safe = escHtml(id);
   const line = readout ? `<p class="rp-deck__readout${ready ? ' rp-deck__readout--ready' : ''}">${escHtml(readout)}${split ? `<span class="rp-deck__split">${escHtml(split)}</span>` : ''}</p>` : '';
   return `<li class="rp-deck" data-deck="${safe}">
-    <div class="rp-deck__text"><h3 class="rp-deck__name">${escHtml(name)}</h3>${line}</div>
+    <div class="rp-deck__text"><h3 class="rp-deck__name">${escHtml(name)}</h3>${line}${note ? `<p class="rp-note">${escHtml(note)}</p>` : ''}</div>
     <button type="button" class="btn ${ready ? 'btn--primary' : 'btn--secondary'} rp-deck__go" data-act="${act}" data-deck="${safe}" data-focus-key="${act}:${safe}">${escHtml(label)}</button>
     ${menu}
   </li>`;
@@ -391,7 +392,24 @@ function deckRow(deck, i) {
       <button type="button" class="rp-menu__btn" id="${mid}Btn" aria-haspopup="menu" aria-expanded="false" aria-controls="${mid}" aria-label="${escHtml(L('moreActions', name))}" data-focus-key="menu:${safe}"><span aria-hidden="true">···</span></button>
       <div class="rp-menu__list" id="${mid}" role="menu" aria-labelledby="${mid}Btn" hidden>${items}</div>
     </div>`;
-  return libraryRow({ id: deck.id, name, readout: r.text, ready: r.ready, split: r.split, act: 'review', label: L('study'), menu });
+  return libraryRow({ id: deck.id, name, readout: r.text, ready: r.ready, split: r.split, act: 'review', label: L('study'), menu, note: provenance(deck.id) });
+}
+
+/**
+ * Which site sent a personal deck, and when. C12 A19: a deck that arrived in a
+ * message rather than by a person's own import says so on its own row, and
+ * says it from the record the engine kept rather than from the deck document,
+ * which is the sender's own text.
+ */
+function provenance(deckId) {
+  const row = state.personal[deckId];
+  if (!row) return '';
+  const host = row.origin ? row.origin.replace(/^https?:\/\//, '') : '';
+  const when = Number.isFinite(row.at)
+    ? new Date(row.at).toLocaleDateString(state.lang === 'es' ? 'es' : 'en', { day: 'numeric', month: 'short', year: 'numeric' })
+    : '';
+  if (!host || !when) return '';
+  return L('personalSent', host, when);
 }
 function builtinRow(entry) {
   // The catalog's note is a bare string (neo-deck-index/1), so when the entry
@@ -412,18 +430,47 @@ function accountLine() {
   return account.signedIn ? L('accountSignedIn') : L('accountSignedOut');
 }
 
+/**
+ * ?deck=personal:... naming a deck nothing has sent yet. In a frame this is
+ * the whole screen and it is a wait, not an error: only the host can end it,
+ * and C12 A19 says the engine posts nothing and never times out. Standalone it
+ * is one line above the library, because the person is not in the frame that
+ * would have been sent the deck and the way out is the site that built it.
+ */
+function waitingPanel() {
+  const id = escHtml(state.awaitingPersonal.id);
+  if (state.embed) {
+    return `<section class="section" aria-labelledby="waitTitle">
+      <div class="section__titles"><h2 class="section__title" id="waitTitle" tabindex="-1">${escHtml(L('personalWaitingTitle'))}</h2>
+        <p class="section__lead">${escHtml(L('personalWaiting'))}</p></div>
+    </section>`;
+  }
+  return `<div class="rp-panel"><p class="rp-note">${escHtml(L('personalMissing', id))}</p></div>`;
+}
+
 function renderLibrary() {
-  const decks = Object.values(state.decks);
+  const all = Object.values(state.decks);
+  const personal = all.filter((d) => isPersonalDeckId(d.id));
+  const decks = all.filter((d) => !isPersonalDeckId(d.id));
+  if (state.awaitingPersonal && state.embed) return waitingPanel();
   const shelf = state.builtin.filter((e) => !state.decks[e.id]);
+  // The empty state answers "there is nothing here", and a personal deck is
+  // something: a library holding only the deck another site sent must not
+  // greet its owner with an invitation to import their first one.
+  const empty = `<div class="rp-panel rp-empty"><h3>${escHtml(L('noDecks'))}</h3><p>${L('noDecksHelp')}</p>
+        <div class="toolbar"><button type="button" class="btn btn--primary" data-act="open-import">${escHtml(L('import'))}</button></div></div>`;
   const list = decks.length
     ? `<ul class="rp-decks" role="list">${decks.map(deckRow).join('')}</ul>`
-    : `<div class="rp-panel rp-empty"><h3>${escHtml(L('noDecks'))}</h3><p>${L('noDecksHelp')}</p>
-        <div class="toolbar"><button type="button" class="btn btn--primary" data-act="open-import">${escHtml(L('import'))}</button></div></div>`;
+    : (personal.length ? '' : empty);
 
   return `<section class="section" aria-labelledby="libTitle">
     <div class="section__titles"><h2 class="section__title" id="libTitle" tabindex="-1">${escHtml(L('decks'))}</h2>
       <p class="section__lead">${escHtml(L('libraryLead'))}</p></div>
+    ${state.awaitingPersonal ? waitingPanel() : ''}
     ${list}
+    ${personal.length ? `<div class="rp-shelf"><h3 class="rp-shelf__title">${escHtml(L('personalTitle'))}</h3>
+      <p class="rp-note">${escHtml(L('personalLead'))}</p>
+      <ul class="rp-decks" role="list">${personal.map((d, i) => deckRow(d, decks.length + i)).join('')}</ul></div>` : ''}
     ${shelf.length ? `<div class="rp-shelf"><h3 class="rp-shelf__title">${escHtml(L('shelfTitle'))}</h3>
       <ul class="rp-decks" role="list">${shelf.map(builtinRow).join('')}</ul></div>` : ''}
     <div class="rp-storage">

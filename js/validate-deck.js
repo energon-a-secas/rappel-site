@@ -28,9 +28,47 @@ export const COMPARE_TOKENS = ['trim', 'casefold', 'strip-accents', 'collapse-sp
 export const SCREEN_VALUES = ['required', 'none'];
 
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const PLAIN_SEG = '[A-Za-z0-9][A-Za-z0-9._-]*';
 // C4.4: a deck fetched from outside neorgon.com is stored as ext:<12 hex>:<id>,
 // and that namespaced id must validate too or every third-party deck is refused.
-const DECK_ID_RE = /^(?:ext:[0-9a-f]{12}:)?[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const DECK_ID_RE = new RegExp(`^(?:ext:[0-9a-f]{12}:)?${PLAIN_SEG}$`);
+/**
+ * C12 A19: `personal:` plus one or more colon-separated plain segments, so
+ * `personal:runcible:japanese` validates. The prefix is RESERVED for a deck a
+ * host hands over in a rappel:load message: a built-in, ?src= or #d= deck
+ * carrying it is refused, because the value of the namespace is that a row
+ * under it can only have come from an allowed origin. The engine does not read
+ * the second segment, and a personal deck may also carry `YYYY-MM-DD.N`, N
+ * whole with no leading zero, for a host that rebuilds several times a day.
+ */
+const PERSONAL_ID_RE = new RegExp(`^(?:ext:[0-9a-f]{12}:)?personal:(?:${PLAIN_SEG}:)*${PLAIN_SEG}$`);
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const PERSONAL_VERSION_RE = /^\d{4}-\d{2}-\d{2}\.(?:0|[1-9]\d*)$/;
+
+/** true when this id is in the personal namespace, ext: prefix or not. */
+export function isPersonalDeckId(id) {
+  return typeof id === 'string' && PERSONAL_ID_RE.test(id);
+}
+
+function parseDeckVersion(v) {
+  if (typeof v !== 'string') return null;
+  if (DATE_RE.test(v)) return { date: v, n: 0 };
+  if (!PERSONAL_VERSION_RE.test(v)) return null;
+  const dot = v.indexOf('.');
+  return { date: v.slice(0, dot), n: Number(v.slice(dot + 1)) };
+}
+
+/**
+ * Order two deck versions. A19 rule 5: newer means a later date, else the same
+ * date and a greater .N. -1, 0, 1, or null when either side is unreadable.
+ */
+export function compareDeckVersions(a, b) {
+  const x = parseDeckVersion(a);
+  const y = parseDeckVersion(b);
+  if (!x || !y) return null;
+  if (x.date !== y.date) return x.date < y.date ? -1 : 1;
+  return x.n === y.n ? 0 : (x.n < y.n ? -1 : 1);
+}
 const FIELD_RE = /\{\{([^{}]+)\}\}/g;
 /** Anki's cloze syntax: {{cN::text}} or {{cN::text::hint}}. C4.2 rule 2. */
 export const CLOZE_RE = /\{\{c(\d+)::([\s\S]*?)(?:::([\s\S]*?))?\}\}/g;
@@ -84,7 +122,10 @@ export function clozeOrdinals(text) {
 /**
  * Validate a neo-deck/1 document. C4.
  * @param {any} doc
- * @param {{ name?: string }} [opts] name used in message paths, e.g. a filename
+ * @param {{ name?: string, personal?: boolean }} [opts] name used in message
+ *   paths, e.g. a filename; personal:true allows the reserved personal:
+ *   namespace and its finer version form (C12 A19), and only the rappel:load
+ *   handler passes it
  */
 export function validateDeck(doc, opts = {}) {
   const r = newReport();
@@ -97,11 +138,19 @@ export function validateDeck(doc, opts = {}) {
   if (doc.format !== DECK_FORMAT) {
     r.err(`${at}.format`, `must be "${DECK_FORMAT}", got ${JSON.stringify(doc.format)}`);
   }
-  if (typeof doc.id !== 'string' || !DECK_ID_RE.test(doc.id)) {
-    r.err(`${at}.id`, 'must be a string of letters, digits, dot, dash or underscore (a third-party deck carries the ext:<hash>: prefix C4.4 gives it)');
+  // opts.personal is set by the one door a personal deck comes through, the
+  // rappel:load handler. Everywhere else the namespace is refused by name.
+  const personal = isPersonalDeckId(doc.id);
+  if (typeof doc.id !== 'string' || !(DECK_ID_RE.test(doc.id) || (personal && opts.personal === true))) {
+    r.err(`${at}.id`, personal
+      ? 'the personal: namespace is reserved for a deck a host sends with rappel:load (C12 A19); a built-in, ?src= or #d= deck may not carry it'
+      : 'must be a string of letters, digits, dot, dash or underscore (a third-party deck carries the ext:<hash>: prefix C4.4 gives it)');
   }
-  if (typeof doc.version !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(doc.version)) {
-    r.err(`${at}.version`, 'must be a YYYY-MM-DD date string, bumped on any content change');
+  if (typeof doc.version !== 'string'
+      || !(DATE_RE.test(doc.version) || (personal && PERSONAL_VERSION_RE.test(doc.version)))) {
+    r.err(`${at}.version`, personal
+      ? 'must be YYYY-MM-DD or YYYY-MM-DD.N, N a whole number with no leading zero'
+      : 'must be a YYYY-MM-DD date string, bumped on any content change');
   }
   if (!isBilingual(doc.name)) {
     r.err(`${at}.name`, 'must be a string or an { en, es } object');

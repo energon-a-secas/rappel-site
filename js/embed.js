@@ -24,10 +24,12 @@
  * than from the UI.
  */
 
-import { state } from './state.js';
+import { state, deckPersists } from './state.js';
 import { isAllowedOrigin } from './origin.js';
 import { buildLedgerDocument, restoreLedger, deckCounts } from './ledger.js';
 import { expandCards, deckName } from './deck.js';
+import { startSession } from './session.js';
+import { render } from './render.js';
 import { escHtml, b64urlDecode } from './utils.js';
 
 export const PROTOCOL_VERSION = 1;
@@ -35,6 +37,16 @@ export const PROTOCOL_VERSION = 1;
 const params = new URLSearchParams(location.search);
 let hostOrigin = null;
 let lastReady = null;
+let loadHandler = null;
+
+/**
+ * js/deck-load.js hands over the function that takes a document into the
+ * library. The dependency points that way because deck-load.js already imports
+ * this module for emitError, and an import back would make the two a cycle.
+ */
+export function setLoadHandler(fn) {
+  loadHandler = fn;
+}
 
 /** Everything the URL says. C6.1. */
 export function readConfig() {
@@ -90,9 +102,16 @@ export function post(type, payload = {}) {
   }
 }
 
-/** The engine's own storage verdict, reported on every ready. C6.5. */
-export function ledgerLabel() {
-  return state.ledgerMode === 'engine' ? 'engine' : 'ephemeral';
+/**
+ * The engine's own storage verdict, reported on every ready. C6.5, and C12 A19
+ * rule 4: a deck that arrived by rappel:load and was not allowed to be written
+ * reports "ephemeral" even in a frame that persists everything else, so one
+ * field still tells the host which world it got.
+ */
+export function ledgerLabel(deckId) {
+  if (state.ledgerMode !== 'engine') return 'ephemeral';
+  if (deckId !== undefined && !deckPersists(deckId)) return 'ephemeral';
+  return 'engine';
 }
 
 function cardIdsOf(deckId) {
@@ -112,7 +131,7 @@ export function emitReady(deckId) {
     total: counts.total,
     due: counts.due,
     new: counts.new,
-    ledger: ledgerLabel(),
+    ledger: ledgerLabel(deckId),
   };
   post('rappel:ready', lastReady);
   emitDue(deckId);
@@ -153,13 +172,17 @@ async function emitProgress(includeLog) {
  *
  * hello, start, export and theme are accepted from any origin: they are
  * read-only or session-scoped, and the host already knows which deck it
- * embedded, so nothing is disclosed. restore is the one that can write, and it
- * is refused from an unlisted origin unless the engine is already ephemeral.
+ * embedded, so nothing is disclosed. Two of them can write: restore, refused
+ * from an unlisted origin unless the engine is already ephemeral, and load
+ * (A19), never refused for its origin because an unlisted sender's deck is
+ * renamed and marked ephemeral instead of being kept.
  *
  * The invariant, stated once: an unlisted origin can never cause a write to
- * rappel.neorgon.com's persistent storage.
+ * rappel.neorgon.com's persistent storage, and a delete is a write. That last
+ * clause is load bearing rather than pedantic: the note on saveSession() in
+ * js/state.js is the defect it was written against.
  */
-function onMessage(event) {
+function handleMessage(event) {
   const m = event.data;
   if (!m || typeof m !== 'object') return;
   if (m.v !== PROTOCOL_VERSION) return;
@@ -184,6 +207,12 @@ function onMessage(event) {
         document.documentElement.dataset.theme = m.theme;
       }
       break;
+    case 'rappel:load':
+      // C12 A19. The origin decides the identity and whether a byte of it may
+      // be written; the document is refused or accepted by the same door a
+      // fetched deck comes through, and the reply is ready then due either way.
+      acceptLoad(m, event.origin, allowed);
+      break;
     case 'rappel:restore': {
       if (!allowed && state.ledgerMode === 'engine') {
         emitError('origin-refused',
@@ -199,6 +228,77 @@ function onMessage(event) {
     default:
       break;
   }
+}
+
+/**
+ * The queue in front of the listener, and why it is not optional.
+ *
+ * llms.txt tells a host to post on the iframe's `load` event, and that event
+ * can fire while boot() is still awaiting the storage probe, so a message can
+ * arrive before the engine is in any state to answer it. hello recovers from
+ * that for ready; NOTHING recovers from it for rappel:load, because the engine
+ * may not nag for a deck (A19: no error, no timeout) and the host believes it
+ * has sent one. The listener is therefore installed at import, the earliest
+ * point in this document's life, and what arrives before boot has finished
+ * waits here in order rather than being dropped.
+ */
+let bridgeOpen = false;
+const waiting = [];
+
+function onMessage(event) {
+  if (bridgeOpen) handleMessage(event);
+  else waiting.push(event);
+}
+
+// Only in an embed. A top-level rappel.neorgon.com listening for messages
+// would give an opener a write path C6.4 never granted it.
+if (params.get('embed') === '1') window.addEventListener('message', onMessage);
+
+/** Boot calls this once the deck it was given has resolved and rendered. */
+export function drainBridge() {
+  bridgeOpen = true;
+  const held = waiting.splice(0, waiting.length);
+  held.forEach(handleMessage);
+  return held.length;
+}
+
+/**
+ * rappel:load, end to end. C12 A19.
+ *
+ * A refusal has already been posted by the load handler with the validator's
+ * own message, so there is nothing to report here but a missing document. A
+ * document that lands starts a session the same way boot.js does for a deck
+ * named in the URL, and only when this frame was not already on that deck: a
+ * host re-sending the current version on every mount must not restart the
+ * session the learner is in the middle of.
+ */
+async function acceptLoad(m, origin, allowed) {
+  if (!loadHandler) return;
+  if (!m.deck || typeof m.deck !== 'object' || Array.isArray(m.deck)) {
+    emitError('deck-invalid', 'rappel:load needs deck: a whole neo-deck/1 document.');
+    return;
+  }
+  const res = await loadHandler(m.deck, {
+    origin,
+    allowed,
+    store: m.store === 'ephemeral' ? 'ephemeral' : 'engine',
+  });
+  if (!res.ok) return;
+  const deck = res.deck;
+  const cfg = readConfig();
+  const fresh = state.activeDeckId !== deck.id;
+  state.activeDeckId = deck.id;
+  setEmbedTitle(deckName(deck, state.lang));
+  if (fresh) {
+    if (cfg.mode === 'browse') state.view = 'browse';
+    else {
+      startSession(deck.id, { mode: cfg.mode, limit: cfg.limit });
+      state.view = 'session';
+    }
+  }
+  await render();
+  emitReady(deck.id);
+  emitResize();
 }
 
 /**
@@ -227,9 +327,8 @@ export function setEmbedTitle(text) {
   if (el) el.textContent = text;
 }
 
-/** Install the inbound listener and the session bridge. */
+/** Wire the session bridge. The inbound listener is installed at import. */
 export function startBridge() {
-  window.addEventListener('message', onMessage);
   document.addEventListener('rappel-session-start', (e) => post('rappel:session-start', e.detail));
   document.addEventListener('rappel-answer', (e) => post('rappel:answer', e.detail));
   document.addEventListener('rappel-session-end', (e) => {

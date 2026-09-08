@@ -182,6 +182,8 @@ then due cards, then up to 20 new cards (or `limit`, when given).
 - Decks you import are in `localStorage` under `rappel:decks:v1`. Scheduler
   settings are under `rappel:prefs:v1` and the in-progress session under
   `rappel:session:v1`, so a closed tab resumes where it was.
+- A personal deck (below) is in `rappel:decks:v1` with the others, and which
+  site sent it, and when, is under `rappel:personal:v1`.
 - Nothing is uploaded. Export writes both halves into one `neo-ledger/1`
   document, and Restore takes one back in, merging per card by whichever review
   is newer. The `scheduler` block in an imported ledger is validated and not
@@ -201,6 +203,10 @@ URL parameters:
   preserving the other parameters in the escape URL except `embed` and
   `ledger`, so the top-level page persists normally
 - `deck=<id>` selects a deck Rappel already ships
+- `deck=personal:<...>` names a personal deck the host sends with `rappel:load`
+  (below). If the engine already holds that id the frame is ready at once with
+  the stored copy; if not, it shows a waiting line and posts nothing until the
+  deck arrives. No `no-deck` error, no timeout: only the host can end the wait
 - `src=<https URL>` fetches a `neo-deck/1` document, which needs CORS. Plain
   `http://localhost` is accepted only when the engine itself is on localhost
 - `#d=<base64url(deck json)>` carries the deck in the fragment instead, UTF-8
@@ -270,14 +276,22 @@ anything else is dropped without a reply.
   100,000-entry log is 8 MiB of postMessage
 - `rappel:restore` `{ format: "neo-ledger/1", ledger, strategy: "merge" | "replace" }`
 - `rappel:theme` `{ theme }`. A name of up to 32 letters, digits, `_` or `-`
+- `rappel:load` `{ deck, store?: "engine" | "ephemeral" }`. `deck` is a whole
+  `neo-deck/1` document, `store` defaults to `"engine"`. Post it on the
+  iframe's load event, then `rappel:hello`
 
-`rappel:restore` is the one message that can write. It is accepted from
-`neorgon.com` and its subdomains over https (and from `localhost` when the
-engine itself is on `localhost`). From any other origin it is accepted only
-when the frame is not persisting, that is under `ledger=host` or after a
+Two of these can write: `rappel:restore` and `rappel:load`. Both are accepted
+from `neorgon.com` and its subdomains over https (and from `localhost` when the
+engine itself is on `localhost`). From any other origin a restore is accepted
+only when the frame is not persisting, that is under `ledger=host` or after a
 failed storage probe, where it writes nothing but memory; otherwise it is
-refused with `rappel:error { code: "origin-refused" }`. An unlisted origin can
-never cause a write to `rappel.neorgon.com`'s persistent storage.
+refused with `rappel:error { code: "origin-refused" }`. A load from any other
+origin is not refused: it is renamed under a hash of that origin and held in
+memory for the life of the frame, which arrives at the same guarantee by a
+different route. An unlisted origin can never
+cause a write to `rappel.neorgon.com`'s persistent storage, and deleting counts
+as writing: a deck the engine may not keep can neither save nor clear the saved
+session of a deck it did keep.
 
     const RAPPEL = 'https://rappel.neorgon.com';
     window.addEventListener('message', (e) => {
@@ -314,6 +328,38 @@ never cause a write to `rappel.neorgon.com`'s persistent storage.
   re-renders and posts `rappel:due`; a rejected one posts `rappel:error` with
   code `deck-invalid` and the first validation message
 
+### What `rappel:load` does with the document
+
+- It goes through the same door as a fetched deck: validated as `neo-deck/1`,
+  then checked against the card map ceiling. A document that fails is refused
+  with `rappel:error { code: "deck-invalid" }` and the first validation
+  message, and nothing of it is kept. Over the ceiling is `storage-unavailable`
+- From `neorgon.com`, its subdomains over https, or `localhost` when the
+  engine is on `localhost`, the deck keeps its own `id`. From any other origin
+  it is renamed `ext:<12 hex of SHA-256 of your origin>:<id>` and lives in
+  memory only
+- **It is stored, and its scheduling written to this engine's ledger, only when
+  your origin is one of those, `store` is `"engine"`, and the frame is itself
+  persisting** (`ledger=engine` and the boot probe passed). Otherwise the deck
+  and every grade on it live for the life of the frame. An unlisted origin can
+  never cause a write to `rappel.neorgon.com`'s persistent storage; that rule
+  did not move
+- The reply is `rappel:ready`, then `rappel:due`, exactly as after a load from
+  the URL. `ledger` on that ready is `"engine"` when the deck was stored and
+  `"ephemeral"` when it was not, so one field tells you which world you got
+- Sending the same `id` again with a newer `version` replaces the notes and
+  templates. Every card whose `noteId:templateId` still exists keeps its
+  stability, difficulty, due date, reps and lapses untouched. A card whose id
+  is gone loses its row (the same sweep a re-downloaded deck gets); its
+  reviews stay in the log, and if the id ever comes back it starts as new. The
+  same `version` is a no-op and an older one is ignored with a console line;
+  both re-emit `rappel:ready` with what is stored
+- `version` on a `personal:` deck may be `YYYY-MM-DD.N`, `N` a whole number,
+  so a host that rebuilds several times a day has an order finer than the
+  date. Newer means a later date, else the same date and a greater `N`
+- Under `mode=cram` the document is still kept when the rules above allow it;
+  cram writes no scheduling, as before
+
 ### `?ledger=`: where the ledger lives in an embed, stated honestly
 
 By default (`ledger=engine`) the frame writes to `rappel.neorgon.com`'s own
@@ -342,6 +388,26 @@ If progress matters to you, use `?ledger=host`, keep the latest
 the next load (after `rappel:ready`, when the deck has resolved). And leave the
 "Open in Rappel" link in place: the top-level origin is the one path that
 always works.
+
+## Personal decks
+
+A deck whose `id` starts with `personal:` is one another site built from your
+own answers and sent with `rappel:load`; Runcible's "Your misses" is one. The
+id is `personal:<site>:<...>`, the second segment being the sending site's own
+name, and the prefix is reserved: a built-in deck, a `?src=` deck or a `#d=`
+deck carrying it is refused by the validator.
+
+- It shows in the library under its own heading, "Personal decks", with the
+  name the sending site gave it, and one line saying which site sent it and
+  when. It is never listed among the decks this build ships
+- Its scheduling exports and restores in `neo-ledger/1` like any other deck's,
+  keyed by its id. The document itself is not in a ledger export, the same as
+  an imported deck: the site that built it sends it again
+- Forget removes the document and its rows from this browser and does not stop
+  the sending site from sending it again on its next visit
+- Opened standalone (`?deck=personal:...`) it is the stored copy; with none
+  stored, the library opens with one line saying the deck is not here and to
+  open it from the site that built it
 
 ## Keyboard
 

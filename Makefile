@@ -58,6 +58,14 @@ validate: test-validate
 test-validate:
 	@node tools/test-validate.mjs
 
+# The personal: namespace and its version order (C12 A19). The reserve rule,
+# and the comparison rule 5 uses to decide whether a re-sent deck keeps the
+# learner's scheduling or restarts it.
+validate: test-personal
+.PHONY: test-personal
+test-personal:
+	@node tools/test-personal.mjs
+
 # The romaji reader (C12 A16, A17), both halves, against the vendored wanakana.
 validate: test-transforms
 .PHONY: test-transforms

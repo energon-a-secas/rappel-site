@@ -83,6 +83,24 @@ export const UI = {
     es: 'Importa un archivo TSV, CSV o JSON, o pega una lista de palabras. Las cabeceras <code>#separator:</code> de Anki se leen tal como están, así que un archivo exportado desde Anki se carga sin cambios.',
   },
   shelfTitle: { en: 'Decks this build ships', es: 'Mazos que incluye esta versión' },
+  // Personal decks: a deck another site built from your own answers and handed
+  // over in a rappel:load message (C12 A19). The row says which site and when,
+  // because a deck appearing in your library on its own deserves a provenance.
+  personalTitle: { en: 'Personal decks', es: 'Mazos personales' },
+  personalLead: {
+    en: 'Built from your own answers on another site.',
+    es: 'Creados a partir de tus propias respuestas en otro sitio.',
+  },
+  personalSent: { en: 'Sent by {0} on {1}.', es: 'Enviado por {0} el {1}.' },
+  personalWaitingTitle: { en: 'Waiting for your deck', es: 'Esperando tu mazo' },
+  personalWaiting: {
+    en: 'The site you came from is building this deck from your own answers. It will start on its own.',
+    es: 'El sitio del que vienes está armando este mazo con tus propias respuestas. Empezará solo.',
+  },
+  personalMissing: {
+    en: 'The deck {0} is not in this browser. Open it from the site that built it.',
+    es: 'El mazo {0} no está en este navegador. Ábrelo desde el sitio que lo creó.',
+  },
   shelfNote: { en: '{0} cards from {1} notes. {2}.', es: '{0} tarjetas de {1} notas. {2}.' },
   cardMap: { en: 'Card map {0} of {1}.', es: 'Mapa de tarjetas: {0} de {1}.' },
   storageRefused: {

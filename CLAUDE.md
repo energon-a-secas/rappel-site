@@ -170,14 +170,24 @@ the ENGINE being on localhost, so it is dead code in production. Nothing in
 root `make smoke` checks any of this: `tools/test-origin.mjs` (52 cases) is the
 whole enforcement. `hostname.endsWith('neorgon.com')` fails five of them.
 
-**Only `rappel:restore` can write, and the refusal condition is exact.** It is
-refused when the origin is unlisted AND `state.ledgerMode === 'engine'`. Under
-`?ledger=host` or a failed storage probe it is accepted from anywhere, because
-then it writes nothing but memory. The invariant, stated once in three files:
-an unlisted origin can never cause a write to `rappel.neorgon.com`'s
-persistent storage. `hello`, `start`, `export` and `theme` are accepted from
-any origin on purpose: read-only or session-scoped, and the host already knows
-which deck it embedded.
+**Two inbound messages can write, and each refusal condition is exact.**
+`rappel:restore` is refused when the origin is unlisted AND
+`state.ledgerMode === 'engine'`; under `?ledger=host` or a failed storage probe
+it is accepted from anywhere, because then it writes nothing but memory.
+`rappel:load` (C12 A19) is never refused for its origin: an unlisted sender's
+deck is renamed `ext:<12 hex>:<id>` and marked ephemeral, so it is held for the
+life of the frame and no byte of it reaches disk. The invariant, stated once in
+three files: an unlisted origin can never cause a write to
+`rappel.neorgon.com`'s persistent storage. **Deleting is writing**, and that is
+the edge that was open until 2026-09-08: `saveSession()` used to CLEAR
+`rappel:session:v1` whenever the session it held sat on an ephemeral deck, so a
+`rappel:load` from an unlisted origin deleted the learner's own saved session in
+any browser that does not partition the frame's storage from the engine's. Both
+`saveSession()` and `clearSession()` now leave that key alone unless the session
+in hand is on a deck this frame may write, and `tools/test-personal.mjs` pins
+it. `hello`, `start`, `export` and `theme` are accepted from any origin on
+purpose: read-only or session-scoped, and the host already knows which deck it
+embedded.
 
 **A rejected restore reports `deck-invalid`, and a restore never changes the
 scheduler.** There is no `ledger-invalid` code in C6.2, so `restoreLedger()`'s

@@ -21,6 +21,8 @@
  * createLog().
  */
 
+import { deckPersists, memAppend } from './state.js';
+
 export const DB_NAME = 'rappel';
 export const DB_VERSION = 1;
 export const STORE = 'reviews';
@@ -114,9 +116,17 @@ export function fromRecord(rec) {
 
 /**
  * Append one review.
+ *
+ * C12 A19 rule 3: a deck this engine may not persist keeps its log in memory
+ * for the life of the frame, so an export still carries it and nothing of it
+ * reaches this origin's disk. That is reported as a landed write because it is
+ * one: the caller's fallback for false is a toast about a refused write, and a
+ * deck that was never going to be written has not refused anything.
+ *
  * @returns {Promise<boolean>} false when the write did not land.
  */
 export function appendReview(deckId, entry) {
+  if (!deckPersists(deckId)) return Promise.resolve(memAppend(deckId, entry));
   return run('readwrite', (store, set) => {
     store.put(toRecord(deckId, entry));
     set(true);

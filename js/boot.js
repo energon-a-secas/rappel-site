@@ -9,7 +9,7 @@
  */
 
 import { state, loadAll, loadSession } from './state.js';
-import { readConfig, decodeInlineDeck, mountEmbedBar, setEmbedTitle, startBridge, emitReady, emitError, emitResize } from './embed.js';
+import { readConfig, decodeInlineDeck, mountEmbedBar, setEmbedTitle, startBridge, drainBridge, emitReady, emitError, emitResize } from './embed.js';
 import { isAllowedDeckSrc } from './origin.js';
 import { acceptDeck, fetchJson, loadBuiltinCatalog, loadBuiltin } from './deck-load.js';
 import { deckName } from './deck.js';
@@ -124,6 +124,12 @@ export async function boot() {
 
   await render();
   if (deck && cfg.embed) emitReady(deck.id);
+  // Whatever the host said while this was still deciding where the ledger
+  // lives. A rappel:load posted on the frame's load event routinely arrives
+  // before the storage probe returns, and a dropped one is a deck that never
+  // comes: the host has sent it and will not send it again until the next
+  // mount (C12 A19).
+  if (cfg.embed) drainBridge();
   emitResize();
 
   // Last, and never awaited before the first paint. With no Clerk key on the
