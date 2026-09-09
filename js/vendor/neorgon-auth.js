@@ -17,7 +17,12 @@
  * @property {HTMLElement | string} signInHost Mount target for SignIn (selector or element)
  * @property {HTMLElement | string} [userButtonHost] Mount target for UserButton when signed in
  * @property {(info: { clerk: import("@clerk/clerk-js").LoadedClerk, hasSession: boolean }) => void} [onSession] Called after load and when session changes
- * @property {Record<string, unknown>} [signInProps] Extra props passed to Clerk `mountSignIn` (e.g. `appearance`, `localization`).
+ * @property {"modal" | "inline"} [signInMode] "inline" (default) mounts the form into `signInHost`,
+ *   which is right when the host is already a real dialog: character-sheet and buyhacks both own one.
+ *   "modal" opens Clerk's own centred dialog via `openSignIn` and leaves `signInHost` alone, which is
+ *   what a site wants when its only host is a header dropdown too small for the form. Default is
+ *   inline because that is what existed, and a shared kit should not change five sites to serve one.
+ * @property {Record<string, unknown>} [signInProps] Extra props passed to Clerk `mountSignIn` / `openSignIn` (e.g. `appearance`, `localization`).
  * @property {Record<string, unknown>} [userButtonProps] Extra props passed to Clerk `mountUserButton` (e.g. `showName: false`).
  * @property {Record<string, unknown>} [clerkAppearance] Passed to `clerk.load({ appearance })` so UserButton popover, menus, and sign-out match your theme.
  */
@@ -121,6 +126,7 @@ export async function initNeorgonClerkConvex(options) {
     signInHost,
     userButtonHost,
     onSession,
+    signInMode = "inline",
     signInProps = {},
     userButtonProps = {},
     clerkAppearance,
@@ -164,9 +170,9 @@ export async function initNeorgonClerkConvex(options) {
         ...userButtonProps,
       });
       mounted = "user";
-    } else if (signInEl) {
+    } else if (signInEl && signInMode === "inline") {
       // withSignUp + hash routing: stay in the mounted modal. Do not set signUpUrl /
-      // fallbackRedirectUrl to location.href — that becomes a normal navigation and reloads the page.
+      // fallbackRedirectUrl to location.href, that becomes a normal navigation and reloads the page.
       clerk.mountSignIn(signInEl, {
         routing: "hash",
         withSignUp: true,
@@ -199,6 +205,11 @@ export async function initNeorgonClerkConvex(options) {
       })();
     });
   }
+
+  // In modal mode the caller opens the dialog, because the control that should
+  // open it is the site's own header button and the kit does not own that.
+  clerk.neorgonOpenSignIn = () =>
+    clerk.openSignIn({ withSignUp: true, ...signInProps });
 
   return clerk;
 }
