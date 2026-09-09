@@ -4,7 +4,7 @@ import type { AuthConfig } from "convex/server";
 // points at it (memes, buyhacks, gamebin, guild-hall, character-sheet,
 // neorgon-auth-client), and the publishable key that pairs with it is public
 // by design (C7.7). The JWT template is named "convex".
-const CLERK_JWT_ISSUER = "https://liked-pup-17.clerk.accounts.dev";
+const CLERK_JWT_ISSUER = "https://clerk.neorgon.com";
 
 export default {
   providers: [
