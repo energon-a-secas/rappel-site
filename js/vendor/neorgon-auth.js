@@ -45,7 +45,18 @@ async function syncConvexHttpJwt(clerk, convex) {
     const token = await session.getToken({ template: "convex" });
     if (token) convex.setAuth(token);
     else convex.clearAuth();
-  } catch {
+  } catch (err) {
+    // Loud on purpose. This catch used to be bare, and it turns every reason a
+    // token cannot be minted into the same silent outcome: the person is signed
+    // in, the UI says so, and every mutation fails "Not authenticated" with
+    // nothing anywhere saying why. The likeliest cause is the JWT template named
+    // "convex" not existing on this Clerk instance, which is easy to miss on a
+    // freshly created production instance.
+    console.error(
+      "Neorgon auth: could not mint the Convex token. Check that a JWT template " +
+      "named \"convex\" exists on this Clerk instance (Clerk dashboard, JWT Templates).",
+      err,
+    );
     convex.clearAuth();
   }
 }
