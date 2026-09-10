@@ -245,8 +245,8 @@ main#main {
  * Owned by the Neorgon Header Kit (css/neorgon-header.css, canonical
  * source: packages/neorgon-ui/header/). Do NOT style .header-bar,
  * .header-logo*, .header-title-link, .header-subtitle, .header-right,
- * .header-actions, or .header-home here. Auth styles (.auth-*) stay
- * site-owned below.
+ * .header-actions, or .header-home here. Sign-in is not styled here either:
+ * the Neorgon Auth Kit owns its slot and dialog (css/neorgon-auth.css).
  *
  * The one sanctioned exception is a custom skin: TOKENS ONLY, and the selector
  * is copied exactly from packages/neorgon-ui/header/README.md, section
@@ -274,7 +274,7 @@ nav {
 }
 
 /* ── Buttons (canonical) ─────────────────────────────────────
- * Use .btn + a variant. Aliases: .nav-link = toolbar ghost; .auth-* map below.
+ * Use .btn + a variant. Alias: .nav-link = toolbar ghost.
  */
 .btn {
   display: inline-flex;
@@ -378,137 +378,6 @@ nav {
   color: var(--text-secondary);
 }
 .shell__rail .nav-link:hover { color: var(--text-primary); }
-
-.auth-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: var(--control-height);
-  min-height: var(--control-height);
-  padding: 0;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-primary);
-  cursor: pointer;
-  font-family: inherit;
-  transition: background-color var(--dur), color var(--dur), border-color var(--dur);
-}
-.auth-toggle:hover {
-  background: var(--surface-2);
-  color: var(--text-primary);
-}
-.auth-toggle svg {
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-  display: block;
-}
-.auth-toggle.logged-in { color: var(--accent); }
-.auth-toggle.logged-in svg circle:nth-of-type(2) {
-  fill: currentColor;
-  stroke: none;
-}
-
-/* ── Sheet (inline panel under header), not a modal ──────────
- * Use for auth, filters, compact forms. No backdrop; page scrolls.
- * For blocking overlays use .modal below.
- */
-.auth-panel {
-  background: var(--surface-1);
-  border-bottom: 1px solid var(--border-subtle);
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease-out;
-}
-.auth-panel.open { max-height: 300px; }
-.auth-panel-inner {
-  padding: var(--space-6);
-  max-width: 400px;
-  margin: 0 auto;
-}
-.auth-tabs {
-  display: flex;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
-}
-.auth-tab {
-  flex: 1;
-  min-height: var(--control-height-sm);
-  padding: 0 var(--space-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: var(--text-sm);
-  font-weight: 600;
-  transition: background-color var(--dur), color var(--dur), border-color var(--dur);
-}
-.auth-tab.active {
-  background: var(--surface-2);
-  color: var(--text-primary);
-  border-color: var(--border-strong);
-}
-.auth-form input {
-  width: 100%;
-  padding: var(--space-3) var(--space-4);
-  margin-bottom: var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-1);
-  color: var(--text-primary);
-  font-size: var(--text-sm);
-  font-family: inherit;
-}
-.auth-submit {
-  width: 100%;
-  min-height: var(--control-height);
-  padding: 0 var(--space-4);
-  border: none;
-  border-radius: var(--radius-sm);
-  background: var(--accent);
-  /* Same reason as .btn--primary: white on this teal is 2.49:1. */
-  color: var(--bg);
-  font-family: inherit;
-  font-weight: 600;
-  font-size: var(--text-sm);
-  cursor: pointer;
-  transition: background-color var(--dur);
-}
-.auth-submit:hover { background: var(--accent-bright); }
-#authUser {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-.auth-username {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-.auth-logout {
-  min-height: var(--control-height-sm);
-  padding: 0 var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: var(--text-sm);
-  font-weight: 600;
-  transition: background-color var(--dur), color var(--dur), border-color var(--dur);
-}
-.auth-logout:hover {
-  background: var(--surface-2);
-  color: var(--text-primary);
-}
-.auth-divider {
-  height: 1px;
-  background: var(--border-subtle);
-}
 
 /* ── Modal (blocking overlay) ──────────────────────────────── */
 .modal[hidden] {
@@ -639,11 +508,7 @@ nav {
 /* ── Button press feedback ─────────────────────────────────── */
 button:active,
 .btn:active,
-.nav-link:active,
-.auth-toggle:active,
-.auth-tab:active,
-.auth-submit:active,
-.auth-logout:active {
+.nav-link:active {
   transform: scale(0.98);
   transition-duration: var(--dur-fast);
 }
@@ -1213,10 +1078,3 @@ body.is-embed .skip-link { display: none; }
 body.is-embed .shell { display: block; padding: 0; }
 body.is-embed main#main { padding: var(--space-4); }
 body.is-embed .stack--loose { gap: var(--space-4); }
-
-
-
-/* The one auth class the template does not style: the sheet's one-line note. */
-.auth-note { margin: 0; color: var(--text-muted, #9aa3b2); font-size: 0.9rem; }
-/* The template caps the open sheet at 300px with overflow hidden, which clips Clerk's form. */
-.auth-panel.open { max-height: min(80vh, 640px); overflow: auto; }

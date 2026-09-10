@@ -17,9 +17,10 @@
  *                    and returns an unsubscribe function
  *
  * With no <meta name="clerk-publishable-key"> on the page that path fetches
- * nothing: no Clerk, no Convex, no esm.sh. There is no eager import here for
- * the same reason, so the dormancy the backend verified on a real network tab
- * stays true from this side too.
+ * nothing: no Auth Kit, no Clerk, no Convex, no esm.sh. There is no eager
+ * import here for the same reason, so the dormancy the backend verified on a
+ * real network tab stays true from this side too. Inside an embed the path is
+ * never started at all (see initAccount).
  */
 
 import { initSync, onAuthChange, syncAvailable, pushBatch } from './sync.js';
@@ -93,14 +94,22 @@ async function applyRemote(remote) {
 }
 
 /**
- * Start the account path. Dormant unless the page carries a Clerk key.
+ * Start the account path. Dormant unless the page carries a Clerk key, and
+ * never started inside an embed.
  *
- * @param {{ deckId?: string }} [opts]
+ * @param {{ deckId?: string, embed?: boolean }} [opts]
  *
  * `pull()` and `push()` take no scope of their own: scope is fixed once, here,
  * through initSync (C12 A2), and for Rappel `deckId` is optional. It is left
  * unset in standalone mode on purpose, because the library holds many decks and
- * one pull should bring all of them back. An embed passes the one deck it hosts.
+ * one pull should bring all of them back.
+ *
+ * `embed: true` (boot.js passes readConfig()'s ?embed=1) stops before initSync,
+ * so a framed deck never loads the Auth Kit, Clerk or the Convex client. The
+ * frame hides the header, so there is no slot to sign in from, and a host page
+ * must not pay for a sign-in its visitor cannot reach. The frame still hears the
+ * one signed-out rappel-auth every page gets, and `available` is false there,
+ * so the account line never offers sync the frame cannot start.
  *
  * The document handed to `push` carries `scheduler`, which the sync module maps
  * onto `ledger.push`'s optional `settings` array (C12 A3). That is the whole of
@@ -108,28 +117,24 @@ async function applyRemote(remote) {
  * here needs to know the array exists beyond passing a complete document.
  */
 export async function initAccount(opts = {}) {
-  account.available = syncAvailable();
-
-  // The header's account button exists in the markup but is hidden until a key
-  // is on the page, so a visitor with no account never meets a dead control.
-  const toggle = document.getElementById('authToggle');
-  if (toggle) toggle.hidden = !account.available;
-  const panel = document.getElementById('authPanel');
-  if (panel) panel.hidden = !account.available;
+  const framed = opts.embed === true;
+  account.available = !framed && syncAvailable();
 
   document.addEventListener('rappel-review', queueReview);
 
+  // Sign-in state is the Auth Kit's, relayed by js/sync.js once the server has
+  // confirmed the subject. The kit paints its own header slot and dialog, so
+  // nothing here touches the header.
   onChange = onAuthChange((s) => {
     account.signedIn = s.signedIn;
     account.subject = s.subject;
-    if (toggle) toggle.classList.toggle('logged-in', !!s.signedIn);
     document.dispatchEvent(new CustomEvent('rappel-auth', { detail: { ...s } }));
   });
 
+  if (framed) return;
+
   await initSync({
     deckId: typeof opts.deckId === 'string' ? opts.deckId : undefined,
-    signInHost: '#neorgon-signin-mount',
-    userButtonHost: '#neorgon-user-mount',
     applyRemote,
     readLocal: () => buildLedgerDocument(),
     onSync: ({ pulled, pushed }) => {

@@ -29,6 +29,7 @@ validator by adding a target and one more such line; never rewrite another's.
 | Module | Lines | Owns |
 |---|---:|---|
 | `js/vendor/wanakana.js` | 1822 | none (third party, MIT) |
+| `js/neorgon-auth.js` | 978 | none (kit) |
 | `js/neorgon-header.js` | 826 | none (kit) |
 | `js/validate-deck.js` | 450 | `DECK_FORMAT`, `DECK_INDEX_FORMAT`, `LEDGER_FORMAT`, `TEMPLATE_KINDS`, `CARD_STATES` |
 | `js/neorgon-footer.js` | 421 | none (kit) |
@@ -48,7 +49,6 @@ validator by adding a target and one more such line; never rewrite another's.
 | `js/fsrs.js` | 189 | `DEFAULT_W`, `S_MIN`, `S_MAX`, `D_MIN`, `D_MAX` |
 | `js/neokeys/overlay.js` | 182 | `open`, `close`, `toggle` |
 | `js/state.js` | 179 | `PREFS_KEY`, `LEDGER_KEY`, `DECKS_KEY`, `SESSION_KEY`, `LEDGER_LIMIT_BYTES` |
-| `js/vendor/neorgon-auth.js` | 167 | `initNeorgonClerkConvex`, `neorgonSignOut`, `neorgonDisplayLabel` |
 | `js/transforms.js` | 159 | `ensureTransforms`, `transformsReady`, `kataToHira`, `TRANSFORM_IDS`, `bindInput` |
 | `js/neorgon-persist.js` | 152 | `safeGet`, `safeSet`, `safeRemove`, `safeGetJSON`, `safeSetJSON` |
 | `js/render-session.js` | 144 | `renderCard` |
@@ -67,11 +67,13 @@ validator by adding a target and one more such line; never rewrite another's.
 | `js/keys.js` | 47 | `initKeys` |
 | `js/neokeys/boot.js` | 18 | none (kit) |
 | `js/app.js` | 14 | none (entry point, wires `boot()` and nothing else) |
+| `js/neorgon-auth-sites.js` | 7 | none (kit, generated catalogue) |
 
 Vendored from `packages/neorgon-ui/`, never edited in place, refreshed by the
 sync scripts: `js/neorgon-header.js`, `js/neorgon-footer.js`,
-`js/neorgon-beacon.js`, `js/neorgon-persist.js`, `js/neokeys/*`, `js/viz.js`
-and the matching `css/neorgon-*.css`, `css/viz.css`. `js/vendor/wanakana.js` is
+`js/neorgon-beacon.js`, `js/neorgon-persist.js`, `js/neorgon-auth.js`,
+`js/neorgon-auth-sites.js`, `js/neokeys/*`, `js/viz.js` and the matching
+`css/neorgon-*.css`, `css/viz.css`. `js/vendor/wanakana.js` is
 upstream 5.3.1 with a licence header, refreshed only by re-vendoring.
 
 The contracts every module cites are `docs/delivery/CONTRACTS.md` at the
@@ -329,7 +331,30 @@ in, and with no account nothing listens (C7.5). `initSync({ deckId })` scopes
 `pull()`; without a Clerk meta every function returns the C12 A5 no-account
 values and fetches nothing. QA confirmed zero requests to Clerk, Convex or
 esm.sh on a real network tab; a static import of the Convex client anywhere
-breaks that.
+breaks that, and a static import of `js/neorgon-auth.js` would cost every
+anonymous visitor the kit module.
+
+**Sign-in is the Neorgon Auth Kit, dormant until a `clerk-publishable-key` meta
+is added, and an embed never starts it.** The kit (`js/neorgon-auth.js`,
+`css/neorgon-auth.css`, vendored by `packages/neorgon-ui/sync-auth.sh`) owns the
+`.neo-auth[data-neo-auth]` slot in `.header-right`, the sign-in dialog and the
+Convex token. `initSync()` in `js/sync.js` imports it and the Convex client only
+when the meta is present, calls `NeoAuth.start({ convex })`, and registers one
+`NeoAuth.onChange` listener for the module's lifetime; a later `initSync()` for
+another deck replaces the scope and hooks and adds nothing. That listener is
+the old `onSession` body: `sync:whoami`, then pull before push. The kit fires
+on real changes only, never on a token refresh, so a `whoami` that fails leaves
+sync signed out until a reload or a fresh sign-in. In a frame,
+`initAccount({ embed })` returns before `initSync()`, so an embed loads no kit,
+no Clerk and no Convex, and `account.available` is false there. Its reviews
+reach the server only as card rows, in the next standalone signed-in merge that
+shares the frame's storage; their log rows never do. The dialog's lede is
+`<meta name="neo-auth-reason">`, and Clerk mounts with virtual routing, which is
+what leaves `#d=` alone. Sign-in cannot be exercised on localhost against the
+production key, and the kit's localhost `neo-auth:dev-key` override does
+nothing here without the meta, because `syncAvailable()` gates the import. To
+switch accounts on: add the meta, run a plain `packages/neorgon-ui/sync-auth.sh`
+so the other sites' catalogues learn about it, then `sync-auth.sh --check`.
 
 **The Persist kit's `storageAvailable()` and the IndexedDB probe both run
 before the first paint, by design.** `boot()` awaits `decideLedgerMode()`

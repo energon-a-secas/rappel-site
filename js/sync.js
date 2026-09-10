@@ -8,10 +8,11 @@
  *
  * 1. It is dormant by default. With no <meta name="clerk-publishable-key"> on
  *    the page, every function returns the "no account" result below and NOTHING
- *    is fetched: no Clerk, no Convex, no esm.sh. The client import is dynamic
- *    and lives inside the guard, unlike memes-site/js/state.js:7 which imports
- *    it statically at module top level and pays for it on every anonymous load.
- * 2. Nothing throws. A network failure, a missing vendored auth client, a
+ *    is fetched: no Clerk, no Convex, no esm.sh, not even the Auth Kit module.
+ *    Both imports are dynamic and live inside the guard, unlike
+ *    memes-site/js/state.js:7, which imports the Convex client statically at
+ *    module top level and pays for it on every anonymous load.
+ * 2. Nothing throws. A network failure, an Auth Kit that did not load, a
  *    malformed ledger: all of them return a result, because the engine is
  *    local-first and a sync failure must never cost the learner a session.
  * 3. pull() runs before push() on sign-in, always, inside this file, so the
@@ -25,8 +26,12 @@ const CONVEX_URL = 'https://academic-bee-4.convex.cloud';
 /** Pinned, matching this project's convex dependency. Fetched only when a Clerk key is present. */
 const CONVEX_CLIENT = 'https://esm.sh/convex@1.43.0/browser';
 
-/** Vendored by packages/neorgon-ui/sync-auth.sh. Absent until that has run. */
-const AUTH_CLIENT = './vendor/neorgon-auth.js';
+/**
+ * The Neorgon Auth Kit, vendored by packages/neorgon-ui/sync-auth.sh. It owns
+ * the header slot, the sign-in dialog and the Convex token; this file starts it
+ * and listens to it, once. Fetched only when a Clerk key is present.
+ */
+const AUTH_KIT = './neorgon-auth.js';
 
 /** Function names, C7.5. Strings at runtime, so there is no build step. */
 const FN = {
@@ -51,6 +56,9 @@ let scope = { deckId: null };
 let hooks = {};
 let auth = { signedIn: false, subject: null };
 const listeners = new Set();
+
+/** The unsubscribe for this module's one NeoAuth.onChange listener. Set once, by initSync. */
+let kitListener = null;
 
 function warn(...args) {
   console.warn('Rappel sync:', ...args);
@@ -92,8 +100,6 @@ export function syncAvailable() {
  *
  * @param {object} [opts]
  * @param {string} [opts.deckId] scope for pull, push and clearRemote.
- * @param {string|Element} [opts.signInHost] where Clerk mounts its sign-in form.
- * @param {string|Element} [opts.userButtonHost] where Clerk mounts the account button.
  * @param {(remote: object|null) => object|null} [opts.applyRemote] merge the
  *        server ledger into local state on sign-in and return what to push back.
  * @param {() => object|null} [opts.readLocal] used when applyRemote is absent or
@@ -104,6 +110,11 @@ export function syncAvailable() {
  * The returned state is what is known at that instant. A restored session
  * resolves a moment later, so read sign-in state from onAuthChange rather than
  * from this return value.
+ *
+ * A second call, for another deck, replaces the scope and the hooks and adds
+ * nothing. The Convex client is made once, NeoAuth.start() is idempotent and
+ * already has that client bound, and the onChange listener is registered on
+ * the first call only, so no sign-in ever runs the merge twice.
  */
 export async function initSync(opts = {}) {
   scope = { deckId: typeof opts.deckId === 'string' ? opts.deckId : null };
@@ -113,22 +124,19 @@ export async function initSync(opts = {}) {
     onSync: opts.onSync,
   };
 
-  const pk = clerkKey();
-  if (!pk) return null; // dormant. No import, no request, no error.
+  if (!clerkKey()) return null; // dormant. No import, no request, no error.
 
   try {
     const { ConvexHttpClient } = await import(CONVEX_CLIENT);
-    client = new ConvexHttpClient(CONVEX_URL);
-    const { initNeorgonClerkConvex } = await import(AUTH_CLIENT);
-    await initNeorgonClerkConvex({
-      convex: client,
-      publishableKey: pk,
-      signInHost: opts.signInHost,
-      userButtonHost: opts.userButtonHost,
-      onSession: ({ hasSession }) => {
-        void onSession(hasSession);
-      },
+    client ||= new ConvexHttpClient(CONVEX_URL);
+    const { NeoAuth } = await import(AUTH_KIT);
+    // Checked and set with no await in between, so two calls racing through the
+    // imports above still leave exactly one listener. The kit calls it with the
+    // settled state, then only on a real change, never on a token refresh.
+    kitListener ||= NeoAuth.onChange(({ signedIn }) => {
+      void onSession(signedIn);
     });
+    await NeoAuth.start({ convex: client });
     return { ...auth };
   } catch (err) {
     warn('init failed, staying local-only', err);
@@ -137,9 +145,15 @@ export async function initSync(opts = {}) {
   }
 }
 
-/** Sign-in and sign-out. The subject comes from the server, never from Clerk. */
-async function onSession(hasSession) {
-  if (!hasSession) {
+/**
+ * Sign-in and sign-out, from the kit's one onChange listener. The subject comes
+ * from the server, never from Clerk. The kit binds the Convex token before it
+ * reports signed-in, so whoami runs authenticated. It does not call again on a
+ * token refresh the way the old helper did, so a whoami that fails here leaves
+ * sync signed out until the next real change: a reload, or signing in again.
+ */
+async function onSession(signedIn) {
+  if (!signedIn) {
     if (auth.signedIn) setAuth(false, null);
     return;
   }

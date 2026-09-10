@@ -133,11 +133,13 @@ export async function boot() {
   emitResize();
 
   // Last, and never awaited before the first paint. With no Clerk key on the
-  // page this returns having fetched nothing (C12 A5); with one, it reads the
-  // server ledger before it writes, which is the only ordering that exercises
-  // the read path on the happy path. Either way a sync failure costs the
-  // learner nothing, so the screen is already up before it runs.
-  initAccount({ deckId: cfg.embed ? deck?.id : undefined }).catch((err) => {
+  // page this returns having fetched nothing (C12 A5), and in an embed it never
+  // starts the Auth Kit: the frame hides the header, so there is no slot to sign
+  // in from, and a host page must not load Clerk for it. Standalone with a key,
+  // it reads the server ledger before it writes, which is the only ordering that
+  // exercises the read path on the happy path. Either way a sync failure costs
+  // the learner nothing, so the screen is already up before it runs.
+  initAccount({ embed: cfg.embed }).catch((err) => {
     console.warn('Rappel: the account path did not start, staying local-only', err);
   });
 }

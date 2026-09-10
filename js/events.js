@@ -84,15 +84,6 @@ async function onAct(act, el) {
       state.view = 'library';
       break;
     }
-    case 'auth-toggle': {
-      // The sheet is a plain hidden toggle; Clerk owns everything inside it.
-      const panel = $('authPanel');
-      if (!panel) return;
-      const open = !panel.classList.contains('open');
-      panel.classList.toggle('open', open);
-      el.setAttribute('aria-expanded', open ? 'true' : 'false');
-      return;
-    }
     case 'open-import':
       openModal('importModal');
       return;
