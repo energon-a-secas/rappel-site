@@ -526,10 +526,19 @@ function appearanceFor(kind) {
   return { variables, elements, layout, options: layout };
 }
 
+/** Where the visible header ends, so a dialog centres in the space under it. 0 with no header in view. */
+function headerOffset() {
+  const bar = document.querySelector('.header-bar');
+  if (!bar) return 0;
+  const { top, bottom } = bar.getBoundingClientRect();
+  return top <= 1 && bottom > 0 ? Math.round(bottom) : 0;
+}
+
 function paintScheme(dialog) {
   const { bg, accent } = readPalette();
   dialog.dataset.scheme = luminance(bg) < 0.4 ? 'dark' : 'light';
   dialog.style.setProperty('--auth-accent-text', contrastText(toHex(accent)));
+  dialog.style.setProperty('--auth-top', `${headerOffset()}px`);
 }
 
 /* ── Header slot ─────────────────────────────────────────────────────────── */

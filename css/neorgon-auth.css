@@ -104,7 +104,12 @@ body:has(.neo-auth-dialog[open]) { overflow: hidden; }
   box-sizing: border-box;
   width: min(440px, calc(100vw - 32px));
   max-width: none;
-  max-height: min(760px, calc(100dvh - 48px));
+  /* Centred in the space under the header, not in the whole viewport: centred on the
+     viewport, the gap above the box is a header shorter than the gap below it, and the
+     box reads as pushed up against the bar. --auth-top is the visible header's bottom
+     edge, measured by the kit each time a dialog opens (0 when the header is scrolled away). */
+  inset-block-start: var(--auth-top, 0px);
+  max-height: min(760px, calc(100dvh - var(--auth-top, 0px) - 48px));
   margin: auto;
   padding: 0;
   border: 1px solid var(--auth-border);
@@ -362,6 +367,7 @@ body:has(.neo-auth-dialog[open]) { overflow: hidden; }
 /* ── Narrow screens: a sheet from the bottom edge ────────────── */
 @media (max-width: 560px) {
   .neo-auth-dialog {
+    inset-block-start: 0;
     width: 100vw;
     max-height: 92dvh;
     margin: auto 0 0;
