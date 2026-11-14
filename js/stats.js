@@ -220,7 +220,7 @@ export async function renderStats() {
       { label: L('statReviewsToday'), value: blind ? 'n/a' : today },
       { label: L('statStreak'), value: blind ? 'n/a' : streak(counts, now) },
       { label: L('statRecall'), value: retention === null ? 'n/a' : `${retention}%` },
-    ]),
+    ], { cols: 6, minWidth: 116, valueFirst: true }),
   ];
 
   if (gap.elsewhere > 0) cards.push(historyElsewhereCard(gap));
