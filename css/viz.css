@@ -1,18 +1,25 @@
 /* ══════════════════════════════════════════════════════════════
- * @neorgon/ui — Viz Kit
- * Standardized, dependency-free graph + box assets.
+ * @neorgon/ui, Viz Kit v2
+ * Standardized, dependency-free graph and box assets.
  *
- * Keyed off the _template design tokens (--bg, --surface-1, --border,
- * --accent, --text-*, --radius-*, --space-*). Sites that already load the
- * template CSS inherit them; the block below only *fallbacks* missing ones
- * so the kit also works standalone.
+ * Keyed off the shared design tokens (--bg, --surface-1, --border, --accent,
+ * --text-*, --radius-*, --space-*, --ok, --warn). Sites that load base.css or
+ * the template inherit them; the block below only falls back for missing
+ * ones so the kit also works standalone.
  *
- * Pair with js/viz.js (pure SVG-string builders). All motion is gated
- * behind prefers-reduced-motion. All numbers use tabular-nums.
+ * Pair with js/viz.js. Chart text is 12px at every width: the runtime sizes
+ * each kit svg's font by the inverse of its viewBox scale (--viz-text sets
+ * another size, as a unitless px number). Every kit text is 12px or more.
+ * All motion is gated behind prefers-reduced-motion; nothing loops at rest.
+ *
+ * New colours are read where they are used, with fallbacks, so a site (or a
+ * print block) that re-points --viz-accent re-colours every bar at once:
+ *   --viz-bar, --viz-bar-hi   unstacked bars and the highlight (default accent)
+ *   --viz-ok, --viz-warn      a good and a bad change (default --ok, --warn)
+ *   --viz-info, --viz-focus   the info pill and focus rings
  * ════════════════════════════════════════════════════════════ */
 
 :root {
-  /* Fallbacks — real values come from _template tokens when present. */
   --viz-surface: var(--surface-1, rgba(255, 255, 255, .03));
   --viz-border: var(--border-subtle, rgba(255, 255, 255, .07));
   --viz-border-strong: var(--border, rgba(255, 255, 255, .1));
@@ -26,7 +33,7 @@
   --viz-radius: var(--radius-sm, 6px);
   --viz-mono: var(--mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
 
-  /* Categorical data palette (order matters — used by multi-series charts). */
+  /* Categorical data palette (order matters: used by multi-series charts). */
   --viz-c1: #0080ff;
   --viz-c2: #a78bfa;
   --viz-c3: #34d399;
@@ -36,7 +43,7 @@
   --viz-c7: #fb923c;
   --viz-c8: #4ade80;
 
-  /* Sequential ramp for heatmaps (low → high). */
+  /* Sequential ramp for heatmaps (low to high). */
   --viz-heat-0: rgba(255, 255, 255, .04);
   --viz-heat-1: rgba(0, 128, 255, .22);
   --viz-heat-2: rgba(0, 128, 255, .42);
@@ -44,92 +51,110 @@
   --viz-heat-4: rgba(0, 128, 255, .92);
 }
 
-/* ── Box: chart frame / panel ──────────────────────────────── */
+/* ── Box: chart frame ──────────────────────────────────────── */
 .viz-panel {
-  padding: 12px 14px 8px;
+  padding: 12px 14px 10px;
   border-radius: var(--viz-radius);
   background: var(--viz-surface);
   border: 1px solid var(--viz-border);
 }
 .viz-head {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
-  gap: 12px;
-  margin-bottom: 6px;
+  gap: 2px 12px;
+  margin-bottom: 8px;
 }
 .viz-title {
-  font-size: .6rem;
-  text-transform: uppercase;
-  letter-spacing: .11em;
-  color: var(--viz-ink-mute);
+  font-size: .8125rem;
   font-weight: 600;
+  line-height: 1.35;
+  color: var(--viz-ink-2);
 }
 .viz-scale {
   font-family: var(--viz-mono);
-  font-size: .64rem;
+  font-size: .75rem;
   color: var(--viz-ink-2);
   font-variant-numeric: tabular-nums;
 }
-.viz-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.viz-svg { display: block; width: 100%; height: auto; overflow: visible; font-size: 12px; }
 
-/* ── Box: stat grid (KPI tiles) ────────────────────────────── */
-.viz-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2, 8px);
-}
-.viz-stat {
-  flex: 1;
-  min-width: 80px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 9px 12px;
-  border-radius: var(--viz-radius);
-  background: var(--viz-surface);
-  border: 1px solid var(--viz-border);
-}
-.viz-stat__label {
-  font-size: .58rem;
-  text-transform: uppercase;
-  letter-spacing: .11em;
-  color: var(--viz-ink-mute);
-}
-.viz-stat__value {
-  font-family: var(--viz-mono);
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--viz-ink);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-.viz-stat__delta { font-size: .64rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-.viz-stat__delta--up { color: var(--ok, #22c55e); }
-.viz-stat__delta--down { color: var(--danger-hover, #f43f5e); }
-.viz-stat__delta--flat { color: var(--viz-ink-mute); }
-
-/* ── Shared SVG element classes ────────────────────────────── */
-.viz-axis { stroke: var(--viz-border-strong); stroke-width: 1; }
-.viz-grid { stroke: var(--viz-grid); stroke-width: 1; }
-.viz-ref { stroke: color-mix(in srgb, var(--warn, #f59e0b) 45%, transparent); stroke-width: 1; stroke-dasharray: 3 3; }
+/* ── Chart text ────────────────────────────────────────────── */
 .viz-tick {
   font-family: var(--viz-mono);
-  font-size: 8px;
   fill: var(--viz-ink-mute);
-  letter-spacing: .04em;
+  font-variant-numeric: tabular-nums;
 }
-.viz-label { fill: var(--viz-ink-2); font-size: 11px; }
+.viz-xlabel { font-family: inherit; }
+.viz-xlabel.is-off { visibility: hidden; }
+.viz-xlabel--major { font-weight: 600; fill: var(--viz-ink-2); }
+.viz-label { fill: var(--viz-ink-2); }
 .viz-value-label {
   font-family: var(--viz-mono);
-  font-size: 9px;
   fill: var(--viz-ink-2);
   font-variant-numeric: tabular-nums;
 }
+.viz-endlabel { font-weight: 600; }
+/* The floor holds under a site's own rule: kit chart text takes the size the
+   runtime sets on its svg (12px rendered, or --viz-text), not a fixed px that
+   a viewBox then shrinks. A site wanting larger chart text sets --viz-text. */
+.viz-svg[data-viz] :is(.viz-tick, .viz-label, .viz-value-label, .viz-endlabel, .viz-unknown-mark) { font-size: inherit; }
+/* Ticks and end labels moved inside a narrow chart keep a halo, so a bar or
+   a line under them does not cut through the figures. */
+.viz-yin .viz-ytick,
+.viz-endlabel[text-anchor="end"] {
+  paint-order: stroke;
+  stroke: var(--bg, #040714);
+  stroke-width: calc(3px * var(--viz-s, 1));
+  stroke-linejoin: round;
+}
+.viz-unknown-mark { fill: var(--viz-ink-mute); font-family: inherit; }
+
+/* ── Axes and grid ─────────────────────────────────────────── */
+.viz-axis { stroke: var(--viz-border-strong); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.viz-grid { stroke: var(--viz-grid); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.viz-grid--zero { stroke: var(--viz-border-strong); }
+.viz-ref {
+  stroke: color-mix(in srgb, var(--viz-warn, var(--warn, #f59e0b)) 45%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+
+/* ── Marks: hover, tap and keyboard targets ────────────────── */
+.viz-mark { outline: none; }
+.viz-hit { fill: transparent; }
+.viz-hit--spoke { stroke: transparent; stroke-width: 18; }
+.viz-mark.is-active .viz-hit { fill: color-mix(in srgb, var(--viz-ink) 7%, transparent); }
+.viz-mark:focus-visible .viz-hit {
+  fill: color-mix(in srgb, var(--viz-ink) 10%, transparent);
+  stroke: var(--viz-focus, var(--viz-ink));
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+.viz-mark.is-active .viz-hit--spoke,
+.viz-mark:focus-visible .viz-hit--spoke { stroke: color-mix(in srgb, var(--viz-ink) 10%, transparent); }
+.viz-mark:focus-visible .viz-bar,
+.viz-mark:focus-visible .viz-cell {
+  stroke: var(--viz-focus, var(--viz-ink));
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+.viz-pt {
+  opacity: 0;
+  stroke: var(--bg, #040714);
+  stroke-width: 1.5;
+  transition: opacity var(--dur-fast, 120ms);
+}
+.viz-mark.is-active .viz-pt,
+.viz-mark:focus-visible .viz-pt,
+.viz-pt--on { opacity: 1; }
 
 /* Bars */
 .viz-bar { transition: opacity var(--dur-fast, 120ms); }
-.viz-bar:hover { opacity: .82; }
+.viz-bar--muted { opacity: .6; }
+.viz-mark.is-active .viz-bar { opacity: .82; }
 
 /* Line / area */
 .viz-line { fill: none; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
@@ -152,7 +177,8 @@
 
 /* Donut */
 .viz-donut-seg { transition: opacity var(--dur-fast, 120ms); }
-.viz-donut-seg:hover { opacity: .82; }
+.viz-svg:has(.viz-arc.is-active) .viz-arc:not(.is-active) .viz-donut-seg,
+.viz-svg:has(.viz-arc:focus-visible) .viz-arc:not(:focus-visible) .viz-donut-seg { opacity: .35; }
 .viz-donut-center {
   font-family: var(--viz-mono);
   font-weight: 700;
@@ -162,64 +188,575 @@
 
 /* Heatmap */
 .viz-cell { transition: opacity var(--dur-fast, 120ms); }
-.viz-cell:hover { opacity: .75; }
+.viz-cell--unknown { stroke: var(--viz-border-strong); stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; }
+.viz-mark.is-active .viz-cell { opacity: .8; }
 
-/* ── Fun effects (opt-in, reduced-motion gated) ────────────── */
-/* ping — a data point radiates outward */
-.viz-fx-ping { transform-box: fill-box; transform-origin: center; animation: viz-ping 1.8s ease-out infinite; }
+/* ── Horizontal bars (orient: 'h') ─────────────────────────── */
+.viz-hbars-wrap { container: viz-hbars / inline-size; }
+.viz-hbars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: fit-content(45%) minmax(3rem, 1fr) auto;
+  column-gap: 12px;
+}
+.viz-hbar {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  min-height: 32px;
+}
+.viz-hbar__label {
+  font-size: .875rem;
+  line-height: 1.3;
+  color: var(--viz-ink-2);
+  overflow-wrap: anywhere;
+}
+.viz-hbar__track { position: relative; height: 10px; }
+.viz-hbar__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--a);
+  width: var(--w);
+  border-radius: 2px;
+  background: var(--c, var(--viz-bar, var(--viz-accent)));
+}
+.viz-hbar__value {
+  font-family: var(--viz-mono);
+  font-size: .8125rem;
+  color: var(--viz-ink);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.viz-hbar.is-hi .viz-hbar__label { color: var(--viz-ink); font-weight: 600; }
+@container viz-hbars (max-width: 420px) {
+  .viz-hbars { grid-template-columns: minmax(0, 1fr) auto; }
+  .viz-hbar { padding: 4px 0; }
+  .viz-hbar__label { grid-column: 1 / -1; }
+}
+
+/* ── Stat grid ─────────────────────────────────────────────── */
+/* v1 markup (<div class="viz-stats"> of <div class="viz-stat">) keeps its wrap. */
+.viz-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  margin: 0;
+}
+.viz-stat {
+  flex: 1;
+  min-width: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--viz-radius);
+  background: var(--viz-surface);
+  border: 1px solid var(--viz-border);
+}
+.viz-stat__label {
+  font-size: .8125rem;
+  line-height: 1.35;
+  color: var(--viz-ink-2);
+}
+.viz-stat__value {
+  margin: 0;
+  font-family: var(--viz-mono);
+  font-size: max(12px, var(--viz-stat-size, 1.5rem));
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--viz-ink);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.viz-stat__foot {
+  margin: 0;
+  font-size: .8125rem;
+  line-height: 1.4;
+  color: var(--viz-ink-2);
+}
+.viz-stat__foot a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.viz-stat__delta { margin: 0; font-size: .8125rem; line-height: 1.4; }
+
+/* v2 markup: a <dl> whose tiles share subgrid rows, so labels, values, feet and
+   deltas line up across a row even when one label wraps. */
+dl.viz-stats {
+  --viz-gap: var(--space-2, 8px);
+  container: viz-stats / inline-size;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(min(100%, var(--viz-stat-min, 166px)), calc((100% - (var(--viz-cols, 4) - 1) * var(--viz-gap)) / var(--viz-cols, 4))), 1fr));
+  column-gap: var(--viz-gap);
+  row-gap: 0;
+  margin: 0 0 calc(-1 * var(--viz-gap));
+}
+dl.viz-stats > .viz-stat {
+  grid-row: span 4;
+  display: grid;
+  grid-template-rows: subgrid;
+  justify-content: normal;
+  align-content: normal;
+  row-gap: 0;
+  min-width: 0;
+  margin-bottom: var(--viz-gap);
+}
+dl.viz-stats .viz-stat__label { grid-row: 1; margin: 0; }
+dl.viz-stats .viz-stat__value { grid-row: 2; margin-top: 6px; align-self: end; }
+dl.viz-stats .viz-stat__foot { grid-row: 3; margin-top: 6px; }
+dl.viz-stats .viz-stat__delta { grid-row: 4; margin-top: 6px; }
+dl.viz-stats[data-order="value"] .viz-stat__value { grid-row: 1; margin-top: 0; align-self: start; }
+dl.viz-stats[data-order="value"] .viz-stat__label { grid-row: 2; margin-top: 6px; }
+.viz-stat--lead { grid-column: span 2; }
+.viz-stat--lead .viz-stat__value { font-size: max(12px, var(--viz-stat-lead-size, 2rem)); }
+@container viz-stats (max-width: 339px) {
+  .viz-stat--lead { grid-column: auto; }
+}
+@supports not (grid-template-rows: subgrid) {
+  dl.viz-stats > .viz-stat { display: flex; flex-direction: column; }
+}
+
+/* Tile states: a word is not a figure, so it takes the UI face. */
+.viz-stat[data-state="unknown"] .viz-stat__value,
+.viz-stat[data-state="empty"] .viz-stat__value,
+.viz-stat[data-state="error"] .viz-stat__value {
+  font-family: inherit;
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--viz-ink-mute);
+}
+.viz-stat[data-state="error"] .viz-stat__value { color: var(--viz-warn, var(--warn, #f59e0b)); }
+.viz-skel {
+  display: block;
+  width: min(7ch, 100%);
+  height: 1em;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--viz-surface) 25%, var(--surface-2, rgba(255, 255, 255, .08)) 50%, var(--viz-surface) 75%);
+  background-size: 200% 100%;
+  animation: viz-shimmer 1.5s ease-in-out infinite;
+}
+
+/* ── Delta and pill ────────────────────────────────────────── */
+.viz-delta { font-weight: 600; font-variant-numeric: tabular-nums; }
+.viz-delta--good { color: var(--viz-ok, var(--ok, var(--good, #34d399))); }
+.viz-delta--bad { color: var(--viz-warn, var(--warn, #f59e0b)); }
+.viz-delta--neutral { color: var(--viz-ink-2); }
+.viz-pill {
+  margin-inline-start: 6px;
+  padding: 0 7px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.viz-pill--info {
+  color: var(--viz-info, var(--info, var(--viz-accent-bright)));
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+/* ── Ranked list ───────────────────────────────────────────── */
+.viz-ranked-wrap { container: viz-ranked / inline-size; }
+.viz-ranked {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .875rem;
+  font-variant-numeric: tabular-nums;
+}
+.viz-ranked th,
+.viz-ranked td {
+  height: 40px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--viz-border);
+  text-align: left;
+  vertical-align: middle;
+}
+.viz-ranked th:first-child,
+.viz-ranked td:first-child { padding-inline-start: 0; }
+.viz-ranked th:last-child,
+.viz-ranked td:last-child { padding-inline-end: 0; }
+.viz-ranked thead th {
+  height: 36px;
+  font-size: .8125rem;
+  font-weight: 600;
+  color: var(--viz-ink-mute);
+  border-bottom-color: var(--viz-border-strong);
+  white-space: nowrap;
+}
+.viz-ranked .n { text-align: right; }
+.viz-ranked tbody th { font-weight: 500; max-width: 0; width: 40%; }
+.viz-ranked__sort {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.viz-ranked__sort:hover { color: var(--viz-ink); }
+[aria-sort="descending"] > .viz-ranked__sort,
+[aria-sort="ascending"] > .viz-ranked__sort { color: var(--viz-ink); }
+[aria-sort="descending"] > .viz-ranked__sort::after { content: "▼"; font-size: .75rem; }
+[aria-sort="ascending"] > .viz-ranked__sort::after { content: "▲"; font-size: .75rem; }
+.viz-ranked__name {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--viz-ink);
+}
+.viz-ranked__pick {
+  all: unset;
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-height: 24px;
+  line-height: 24px;
+  border-radius: 4px;
+  color: var(--viz-ink);
+  cursor: pointer;
+}
+.viz-ranked__pick[aria-pressed="true"] { font-weight: 700; }
+.viz-ranked__sort:focus-visible,
+.viz-ranked__pick:focus-visible {
+  outline: 2px solid var(--viz-focus, var(--viz-accent-bright));
+  outline-offset: 2px;
+}
+.viz-ranked--pick tbody tr { cursor: pointer; }
+.viz-ranked tbody tr:hover { background: color-mix(in srgb, var(--viz-ink) 4%, transparent); }
+.viz-ranked tbody tr.is-picked { background: color-mix(in srgb, var(--viz-accent) 14%, transparent); }
+.viz-ranked tbody tr.is-dim { opacity: .55; }
+.viz-ranked__barcell { width: 45%; }
+.viz-ranked__cell {
+  display: grid;
+  grid-template-columns: minmax(2.5rem, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+.viz-ranked__track { display: block; height: 6px; }
+.viz-ranked__bar {
+  display: block;
+  height: 100%;
+  width: calc(var(--v, 0) * 100%);
+  border-radius: 3px;
+  background: var(--viz-bar, var(--viz-accent));
+  opacity: .7;
+}
+.viz-ranked tr.is-picked .viz-ranked__bar { opacity: 1; background: var(--viz-bar-hi, var(--viz-accent-bright)); }
+.viz-ranked__num { font-family: var(--viz-mono); color: var(--viz-ink); white-space: nowrap; }
+.viz-ranked__sub {
+  display: block;
+  margin-top: 2px;
+  font-size: .75rem;
+  line-height: 1.3;
+  color: var(--viz-ink-mute);
+}
+.viz-ranked__note,
+.viz-ranked__caption {
+  margin: 8px 0 0;
+  font-size: .8125rem;
+  line-height: 1.45;
+  color: var(--viz-ink-mute);
+  text-align: left;
+}
+.viz-ranked__caption { caption-side: bottom; }
+@container viz-ranked (max-width: 480px) {
+  .viz-ranked thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .viz-ranked,
+  .viz-ranked tbody { display: block; }
+  .viz-ranked tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 14px;
+    row-gap: 4px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--viz-border);
+  }
+  .viz-ranked tbody th,
+  .viz-ranked tbody td {
+    display: block;
+    height: auto;
+    width: auto;
+    max-width: none;
+    padding: 0;
+    border: 0;
+  }
+  .viz-ranked tbody th,
+  .viz-ranked__barcell { flex: 1 1 100%; }
+  .viz-ranked__pick,
+  .viz-ranked__name { white-space: normal; overflow-wrap: anywhere; }
+  .viz-ranked tbody td:not(.viz-ranked__barcell) {
+    flex: 0 0 auto;
+    text-align: left;
+    font-size: .8125rem;
+    color: var(--viz-ink-mute);
+  }
+  .viz-ranked tbody td:not(.viz-ranked__barcell)::before { content: attr(data-label) " "; }
+  .viz-ranked tbody td:not(.viz-ranked__barcell) .viz-ranked__num { color: var(--viz-ink-2); }
+}
+
+/* ── Lever list ────────────────────────────────────────────── */
+.viz-levers-wrap { container: viz-levers / inline-size; }
+.viz-levers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(4rem, 1fr) auto auto;
+  column-gap: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.viz-lever {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  min-height: 40px;
+  border-bottom: 1px solid var(--viz-border);
+}
+.viz-lever--bad { --viz-tone: var(--viz-warn, var(--warn, #f59e0b)); }
+.viz-lever--good { --viz-tone: var(--viz-ok, var(--ok, var(--good, #34d399))); }
+.viz-lever--neutral { --viz-tone: var(--viz-ink-mute); }
+.viz-lever__name { font-size: .875rem; line-height: 1.35; color: var(--viz-ink); }
+.viz-lever__track { position: relative; height: 10px; }
+.viz-lever__track::before {
+  content: "";
+  position: absolute;
+  left: var(--z, 0%);
+  top: -5px;
+  bottom: -5px;
+  width: 1px;
+  background: var(--viz-border-strong);
+}
+.viz-lever__bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--a);
+  width: var(--w);
+  border-radius: 2px;
+  background: var(--viz-tone);
+}
+.viz-lever__delta {
+  font-family: var(--viz-mono);
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--viz-tone);
+  text-align: right;
+  white-space: nowrap;
+}
+.viz-lever__share {
+  font-family: var(--viz-mono);
+  font-size: .8125rem;
+  color: var(--viz-ink-mute);
+  text-align: right;
+  white-space: nowrap;
+}
+@container viz-levers (max-width: 440px) {
+  .viz-levers { grid-template-columns: minmax(3rem, 1fr) auto auto; }
+  .viz-lever { padding: 6px 0; row-gap: 4px; }
+  .viz-lever__name { grid-column: 1 / -1; }
+}
+
+/* ── Legend ────────────────────────────────────────────────── */
+.viz-legend {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: .875rem;
+  line-height: 1.35;
+  color: var(--viz-ink-2);
+}
+.viz-legend__item { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; }
+.viz-legend__swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--c);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.viz-legend--line .viz-legend__swatch { width: 14px; height: 3px; }
+.viz-legend__value { font-family: var(--viz-mono); color: var(--viz-ink); font-variant-numeric: tabular-nums; }
+.viz-legend__share { font-family: var(--viz-mono); color: var(--viz-ink-mute); font-variant-numeric: tabular-nums; }
+.viz-legend__item.is-muted { opacity: .6; }
+
+/* ── State block: empty, no match, partial, error ──────────── */
+.viz-state,
+.viz-empty,
+.viz-error {
+  padding: 20px 16px;
+  text-align: center;
+  font-size: 1rem;
+  line-height: 1.45;
+  color: var(--viz-ink-2);
+  border-radius: var(--viz-radius);
+  border: 1px dashed var(--viz-border-strong);
+  background: var(--viz-surface);
+}
+.viz-state__title { margin: 0; color: var(--viz-ink); }
+.viz-state__next { margin: 6px 0 0; font-size: .875rem; color: var(--viz-ink-mute); }
+/* Inside a chart frame the block drops its own box: one frame, not a box in a box. */
+.viz-panel > .viz-state:not([data-state="error"]) { border-color: transparent; background: none; }
+.viz-state[data-state="error"],
+.viz-error {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--danger, #f43f5e) 45%, transparent);
+  background: color-mix(in srgb, var(--danger, #f43f5e) 7%, var(--viz-surface));
+}
+.viz-state[data-state="partial"] {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--viz-info, var(--viz-accent-bright)) 40%, transparent);
+}
+.viz-state__action {
+  font: inherit;
+  font-weight: 600;
+  color: var(--viz-ink);
+  background: color-mix(in srgb, var(--viz-ink) 6%, transparent);
+  border: 1px solid var(--viz-border-strong);
+  border-radius: var(--viz-radius);
+  min-height: 32px;
+  padding: 2px 12px;
+  cursor: pointer;
+}
+.viz-state__action:hover { background: color-mix(in srgb, var(--viz-ink) 12%, transparent); }
+.viz-state__action:focus-visible { outline: 2px solid var(--viz-focus, var(--viz-accent-bright)); outline-offset: 2px; }
+
+/* ── Tooltip (one per page, appended to body by the runtime) ── */
+.viz-tip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 10000;
+  max-width: min(320px, calc(100vw - 16px));
+  padding: 8px 10px;
+  border: 1px solid var(--viz-border-strong);
+  border-radius: var(--viz-radius);
+  background: color-mix(in srgb, var(--viz-ink) 8%, var(--bg, #040714));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+  color: var(--viz-ink);
+  font-family: var(--font, system-ui, sans-serif);
+  font-size: .8125rem;
+  line-height: 1.4;
+  pointer-events: none;
+}
+.viz-tip[hidden] { display: none; }
+.viz-tip__title { font-weight: 600; }
+.viz-tip__value { margin-top: 2px; font-family: var(--viz-mono); font-variant-numeric: tabular-nums; }
+.viz-tip__rows {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 2px 8px;
+}
+.viz-tip__rows li { display: contents; }
+.viz-tip__swatch { width: 8px; height: 8px; border-radius: 2px; }
+.viz-tip__label { color: var(--viz-ink-2); }
+.viz-tip__num { font-family: var(--viz-mono); text-align: right; font-variant-numeric: tabular-nums; }
+.viz-tip__rows .is-on .viz-tip__label,
+.viz-tip__rows .is-on .viz-tip__num { color: var(--viz-ink); font-weight: 700; }
+.viz-tip__rows .viz-tip__sep { display: block; grid-column: 1 / -1; height: 1px; margin: 2px 0; background: var(--viz-border-strong); }
+.viz-tip__rows .is-total > * { font-weight: 600; }
+.viz-tip__foot { margin-top: 4px; font-size: .75rem; color: var(--viz-ink-mute); }
+
+/* ── Effects (opt-in through animate, reduced-motion gated, none loop at rest) ── */
+/* ping and pulse run three times and sweep turns once; add .viz-fx-live to loop
+   one on a chart that is updating live. */
+.viz-fx-ping { transform-box: fill-box; transform-origin: center; animation: viz-ping 1.8s ease-out 3; }
 @keyframes viz-ping {
   0%   { transform: scale(1);   opacity: .9; }
   100% { transform: scale(3.2); opacity: 0; }
 }
-
-/* sweep — radar-style rotating wedge */
-.viz-fx-sweep { animation: viz-spin 8s linear infinite; }
+.viz-fx-sweep { animation: viz-spin 8s linear 1; }
 @keyframes viz-spin { to { transform: rotate(360deg); } }
+.viz-fx-pulse { animation: viz-pulse 2s ease-in-out 3; }
+@keyframes viz-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+.viz-fx-live { animation-iteration-count: infinite; }
 
-/* draw-line — path traces itself in on mount */
+/* draw-line: the path carries pathLength="1", so one dash is the whole line;
+   the runtime adds .is-drawn on animationend and the dash pattern goes. */
 .viz-fx-draw {
-  stroke-dasharray: var(--viz-len, 1000);
-  stroke-dashoffset: var(--viz-len, 1000);
-  animation: viz-draw 1.1s var(--ease-snap, cubic-bezier(.34, 1.56, .64, 1)) forwards;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: viz-draw 1.1s var(--ease-out, cubic-bezier(.22, 1, .36, 1)) forwards;
 }
+.viz-fx-draw.is-drawn { stroke-dasharray: none; stroke-dashoffset: 0; animation: none; }
 @keyframes viz-draw { to { stroke-dashoffset: 0; } }
 
-/* area-in — gradient area fades/rises in */
-.viz-fx-area-in { animation: viz-area-in .5s ease-out both; transform-origin: bottom; }
+.viz-fx-area-in { animation: viz-area-in .5s var(--ease-out, cubic-bezier(.22, 1, .36, 1)) both; transform-origin: bottom; }
 @keyframes viz-area-in { from { opacity: 0; transform: scaleY(.6); } to { opacity: 1; transform: scaleY(1); } }
 
-/* grow — bars/segments scale up from their baseline */
-.viz-fx-grow { transform-box: fill-box; transform-origin: bottom; animation: viz-grow .5s var(--ease-snap, cubic-bezier(.34, 1.56, .64, 1)) both; }
+.viz-fx-grow {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: viz-grow .5s var(--ease-out, cubic-bezier(.22, 1, .36, 1)) both;
+}
 @keyframes viz-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 
-/* pulse — soft attention pulse for a highlighted node */
-.viz-fx-pulse { animation: viz-pulse 2s ease-in-out infinite; }
-@keyframes viz-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
-
 @media (prefers-reduced-motion: reduce) {
-  .viz-fx-ping, .viz-fx-sweep, .viz-fx-draw, .viz-fx-area-in, .viz-fx-grow, .viz-fx-pulse {
-    animation: none;
-  }
-  .viz-fx-draw { stroke-dashoffset: 0; }
+  .viz-fx-ping, .viz-fx-sweep, .viz-fx-draw, .viz-fx-area-in, .viz-fx-grow, .viz-fx-pulse,
+  .viz-skeleton, .viz-skel { animation: none; }
+  .viz-fx-draw { stroke-dasharray: none; stroke-dashoffset: 0; }
+  .viz-pt, .viz-bar, .viz-cell, .viz-donut-seg { transition: none; }
 }
 
-/* ── States: skeleton / empty / error ──────────────────────── */
+/* ── Skeleton ──────────────────────────────────────────────── */
 .viz-skeleton {
   height: var(--viz-skel-h, 120px);
   border-radius: var(--viz-radius);
-  background: linear-gradient(90deg, var(--viz-surface) 25%, var(--surface-2, rgba(255,255,255,.06)) 50%, var(--viz-surface) 75%);
+  background: linear-gradient(90deg, var(--viz-surface) 25%, var(--surface-2, rgba(255, 255, 255, .06)) 50%, var(--viz-surface) 75%);
   background-size: 200% 100%;
   animation: viz-shimmer 1.5s ease-in-out infinite;
 }
 @keyframes viz-shimmer { to { background-position: -200% 0; } }
-@media (prefers-reduced-motion: reduce) { .viz-skeleton { animation: none; } }
-.viz-empty, .viz-error {
-  padding: 20px 14px;
-  text-align: center;
-  font-size: var(--text-sm, .875rem);
-  border-radius: var(--viz-radius);
-  border: 1px dashed var(--viz-border);
-  background: var(--viz-surface);
+
+/* ── Shared ────────────────────────────────────────────────── */
+.viz-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
-.viz-empty { color: var(--viz-ink-mute); }
-.viz-error { color: var(--danger-hover, #f43f5e); border-color: color-mix(in srgb, var(--danger-hover, #f43f5e) 40%, transparent); }
+.viz-unknown { color: var(--viz-ink-mute); font-family: inherit; }
+
+/* Phones and other coarse pointers: 44px rows for the controls in main content. */
+@media (pointer: coarse) {
+  .viz-ranked th,
+  .viz-ranked td { height: 44px; }
+  .viz-ranked__pick,
+  .viz-ranked__sort { min-height: 44px; line-height: 44px; }
+  .viz-state__action { min-height: 44px; }
+}
+
+@media print {
+  .viz-tip { display: none !important; }
+  .viz-hit { display: none; }
+  .viz-mark .viz-pt:not(.viz-pt--on) { opacity: 0; }
+}

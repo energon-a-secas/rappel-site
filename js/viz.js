@@ -1,233 +1,100 @@
 /* ══════════════════════════════════════════════════════════════
- * @neorgon/ui — Viz Kit builders
+ * @neorgon/ui, Viz Kit v2: chart builders and the kit's entry point
  *
- * Dependency-free, framework-free. Every builder is a PURE function that
- * returns an HTML/SVG string, mirroring the proven radar-site render style.
- * Pair with css/viz.css.
+ * Dependency-free, framework-free. Every builder is a pure function that
+ * returns an HTML/SVG string; importing this file in a browser also installs
+ * the runtime once (viz-runtime.js: text sizing, x-label collisions, the
+ * hover layer, keyboard marks), so `el.innerHTML = viz.bars(...)` is enough.
+ * Pair with css/viz.css. Vendored as js/viz.js plus js/viz-format.js,
+ * js/viz-axes.js, js/viz-blocks.js and js/viz-runtime.js; sync-viz.sh moves
+ * all six files together.
  *
- * Shared opts (all optional):
- *   uid        unique id prefix for <defs> (auto-generated if omitted — always
- *              pass a stable one when you need deterministic output/tests)
- *   title      small uppercase heading rendered in a .viz-head frame
- *   scale      right-aligned mono readout in the .viz-head frame
+ * Shared opts (all optional, every v1 call keeps working):
+ *   uid        unique id prefix for <defs> (pass a stable one for deterministic output)
+ *   title      sentence-case heading in a .viz-head frame; scale a mono readout beside it
  *   ariaLabel  accessible name for the chart (defaults to title)
- *   width,height  SVG viewBox size (charts are responsive via width:100%)
- *   padL,padR  bars()/line() gutter overrides, for callers that map pointer
- *              positions back to data and need the geometry they passed in
- *   colors     categorical palette override (array of CSS colors)
- *   animate    true to enable the chart's tasteful, reduced-motion-gated effect
- *   frame      false to skip the .viz-panel wrapper (embed raw SVG)
+ *   width,height  viewBox size (charts are responsive via width:100%)
+ *   padL,padR  gutter overrides for callers that map pointer positions back to data
+ *   format     value format for ticks, labels and tooltips: 'usd', 'usdWhole',
+ *              'usdCompact', 'compact', 'pct', 'share', 'multiple', 'int',
+ *              'number' (default) or a function (see viz-format.js)
+ *   unknown    the word an unknown value prints (null is never drawn as 0)
+ *   colors     categorical palette override; colorBy:'key' takes colorFor(key)
+ *   marks      false to skip the focusable marks and the hover layer
+ *   animate    true for the chart's reduced-motion-gated effect
+ *   frame      false to skip the .viz-panel wrapper
+ *   lang       'en' | 'es' for the kit's words (defaults to <html lang>)
  * ════════════════════════════════════════════════════════════ */
 
-const PALETTE = [
-  'var(--viz-c1)', 'var(--viz-c2)', 'var(--viz-c3)', 'var(--viz-c4)',
-  'var(--viz-c5)', 'var(--viz-c6)', 'var(--viz-c7)', 'var(--viz-c8)',
-];
+import {
+  PALETTE, esc, clamp, paletteAt, colorFor, formatValue, formatSigned, unknownWord,
+  truncateMiddle, niceTicks, axisFormatter, langOf,
+} from './viz-format.js';
+import {
+  frame, stateBlock, empty, error, skeleton, statGrid, delta, ranked, levers, legend,
+} from './viz-blocks.js';
+import { bars, line, fmt, numOrNull, svgOpen, markOpen } from './viz-axes.js';
+import { install } from './viz-runtime.js';
 
-let _uidSeq = 0;
-const uid = (p = 'viz') => `${p}-${(_uidSeq++).toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+if (typeof document !== 'undefined' && typeof window !== 'undefined') install(document);
 
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => (
-  { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
-));
-const fmt = (n) => (Math.abs(n) >= 1000 ? n.toLocaleString('en-US') : String(+(+n).toFixed(2)));
-/* Axis ticks live in a ~26px gutter: "1,788.904" overflows it, "1,789" fits.
- * Compact above 10k, whole numbers above 100, fmt() below (decimals matter there). */
-const fmtTick = (n) => {
-  const a = Math.abs(n);
-  if (a >= 1e9) return `${+(n / 1e9).toFixed(1)}B`;
-  if (a >= 1e6) return `${+(n / 1e6).toFixed(1)}M`;
-  if (a >= 10000) return `${+(n / 1000).toFixed(1)}k`;
-  if (a >= 100) return Math.round(n).toLocaleString('en-US');
-  return fmt(n);
-};
-const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-const paletteAt = (i, colors) => (colors || PALETTE)[i % (colors || PALETTE).length];
-
-/** Wrap chart body in the standard .viz-panel frame (title + scale). */
-function frame(body, o = {}) {
-  if (o.frame === false) return body;
-  const head = (o.title || o.scale)
-    ? `<div class="viz-head">${o.title ? `<span class="viz-title">${esc(o.title)}</span>` : ''}${o.scale ? `<span class="viz-scale">${esc(o.scale)}</span>` : ''}</div>`
-    : '';
-  return `<div class="viz-panel">${head}${body}</div>`;
-}
-
-function svgOpen(w, h, o = {}, extra = '') {
-  const label = o.ariaLabel || o.title || 'chart';
-  const par = extra || '';
-  return `<svg class="viz-svg" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(label)}" ${par}>`;
-}
-
-/* ── States ────────────────────────────────────────────────── */
-export function skeleton(o = {}) {
-  return frame(`<div class="viz-skeleton" style="--viz-skel-h:${o.height || 120}px"></div>`, o);
-}
-export function empty(msg = 'No data yet', o = {}) {
-  return frame(`<div class="viz-empty">${esc(msg)}</div>`, o);
-}
-export function error(msg = 'Could not load data', o = {}) {
-  return frame(`<div class="viz-error">${esc(msg)}</div>`, o);
-}
-
-/* ── Stat grid (KPI boxes) ─────────────────────────────────── */
-/** items: [{ label, value, delta? }]  delta: number | {value, dir} */
-export function statGrid(items = []) {
-  if (!items.length) return empty('No stats');
-  const cells = items.map((it) => {
-    let delta = '';
-    if (it.delta != null) {
-      const d = typeof it.delta === 'object' ? it.delta.value : it.delta;
-      const dir = typeof it.delta === 'object' && it.delta.dir
-        ? it.delta.dir
-        : (d > 0 ? 'up' : d < 0 ? 'down' : 'flat');
-      const arrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '■';
-      delta = `<span class="viz-stat__delta viz-stat__delta--${dir}">${arrow} ${esc(fmt(Math.abs(d)))}</span>`;
-    }
-    return `<div class="viz-stat"><span class="viz-stat__label">${esc(it.label)}</span><span class="viz-stat__value">${esc(String(it.value))}</span>${delta}</div>`;
-  }).join('');
-  return `<div class="viz-stats">${cells}</div>`;
-}
-
-/* ── Bars (vertical) ───────────────────────────────────────── */
-/** data: [{ label, value, color? }] ; opts.stacked with value as array + opts.keys
- *  opts.tickEvery: label every Nth bar (default: auto, ~14 labels max) */
-export function bars(data = [], o = {}) {
-  if (!data.length) return frame(empty('No data', { frame: false }), o);
-  const w = o.width || 320, h = o.height || 160;
-  const pad = { t: 10, r: o.padR || 8, b: 22, l: o.padL || 30 };
-  const pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
-  const stacked = Array.isArray(data[0].value);
-  const totals = data.map((d) => stacked ? d.value.reduce((a, b) => a + b, 0) : d.value);
-  const max = o.max || Math.max(1, ...totals);
-  const n = data.length;
-  const gap = pw / n * 0.28;
-  const bw = pw / n - gap;
-  const yAt = (v) => pad.t + ph - (v / max) * ph;
-  // A dense series needs fewer axis labels than it has bars: 90 daily bars
-  // render 90 overlapping ticks. Thin the labels, never the bars, and every bar
-  // keeps its own tooltip. Up to 14 bars behave exactly as before.
-  const every = o.tickEvery || Math.max(1, Math.ceil(n / 14));
-  const tickAt = (i, label, cx) => (i % every === 0
-    ? `<text class="viz-tick" x="${cx}" y="${h - 8}" text-anchor="middle">${esc(label)}</text>`
-    : '');
-
-  const grid = [0, 0.25, 0.5, 0.75, 1].map((f) => {
-    const y = pad.t + ph - f * ph;
-    return `<line class="viz-grid" x1="${pad.l}" y1="${y.toFixed(1)}" x2="${w - pad.r}" y2="${y.toFixed(1)}"/><text class="viz-tick" x="${pad.l - 4}" y="${(y + 3).toFixed(1)}" text-anchor="end">${fmtTick(max * f)}</text>`;
-  }).join('');
-
-  const cls = o.animate ? ' viz-fx-grow' : '';
-  const barsSvg = data.map((d, i) => {
-    const x = pad.l + i * (pw / n) + gap / 2;
-    if (stacked) {
-      let acc = 0;
-      const segs = d.value.map((v, k) => {
-        const y0 = yAt(acc), y1 = yAt(acc + v); acc += v;
-        const color = paletteAt(k, o.colors);
-        const key = o.keys ? o.keys[k] : `#${k + 1}`;
-        return `<rect class="viz-bar${cls}" x="${x.toFixed(1)}" y="${y1.toFixed(1)}" width="${bw.toFixed(1)}" height="${(y0 - y1).toFixed(1)}" fill="${color}" rx="1.5"><title>${esc(d.label)} · ${esc(key)}: ${fmt(v)}</title></rect>`;
-      }).join('');
-      return `${segs}${tickAt(i, d.label, (x + bw / 2).toFixed(1))}`;
-    }
-    const y = yAt(d.value);
-    const color = d.color || paletteAt(i, o.colors);
-    return `<rect class="viz-bar${cls}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${(pad.t + ph - y).toFixed(1)}" fill="${color}" rx="2"><title>${esc(d.label)}: ${fmt(d.value)}</title></rect>${tickAt(i, d.label, (x + bw / 2).toFixed(1))}`;
-  }).join('');
-
-  return frame(`${svgOpen(w, h, o)}${grid}${barsSvg}</svg>`, o);
-}
-
-/* ── Line / area ───────────────────────────────────────────── */
-/** series: [{ name?, color?, values: number[] | {x,y}[] }] ; opts.area, opts.max, opts.min */
-export function line(series = [], o = {}) {
-  const list = Array.isArray(series[0]) || typeof series[0] === 'number' ? [{ values: series }] : series;
-  if (!list.length || !list[0].values?.length) return frame(empty('No data', { frame: false }), o);
-  const w = o.width || 340, h = o.height || 150;
-  const pad = { t: 10, r: o.padR || 8, b: 20, l: o.padL || 30 };
-  const pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
-  const norm = (vals) => vals.map((v, i) => (typeof v === 'number' ? { x: i, y: v } : v));
-  const all = list.flatMap((s) => norm(s.values));
-  const xs = all.map((p) => p.x), ys = all.map((p) => p.y);
-  const xMin = Math.min(...xs), xMax = Math.max(...xs);
-  const yMin = o.min != null ? o.min : Math.min(0, ...ys);
-  const yMax = o.max != null ? o.max : Math.max(1, ...ys);
-  const xAt = (x) => pad.l + (xMax === xMin ? 0 : (x - xMin) / (xMax - xMin)) * pw;
-  const yAt = (y) => pad.t + ph - ((y - yMin) / (yMax - yMin || 1)) * ph;
-  const id = o.uid || uid('line');
-
-  const grid = [0, 0.5, 1].map((f) => {
-    const y = pad.t + ph - f * ph;
-    return `<line class="viz-grid" x1="${pad.l}" y1="${y.toFixed(1)}" x2="${w - pad.r}" y2="${y.toFixed(1)}"/><text class="viz-tick" x="${pad.l - 4}" y="${(y + 3).toFixed(1)}" text-anchor="end">${fmtTick(yMin + (yMax - yMin) * f)}</text>`;
-  }).join('');
-
-  let defs = '';
-  const body = list.map((s, si) => {
-    const pts = norm(s.values);
-    const color = s.color || paletteAt(si, o.colors);
-    const d = pts.map((p, i) => `${i ? 'L' : 'M'}${xAt(p.x).toFixed(1)} ${yAt(p.y).toFixed(1)}`).join(' ');
-    let area = '';
-    if (o.area) {
-      const gid = `${id}-area-${si}`;
-      defs += `<linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity=".35"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient>`;
-      const areaD = `${d} L${xAt(pts[pts.length - 1].x).toFixed(1)} ${(pad.t + ph).toFixed(1)} L${xAt(pts[0].x).toFixed(1)} ${(pad.t + ph).toFixed(1)} Z`;
-      area = `<path d="${areaD}" fill="url(#${gid})" class="${o.animate ? 'viz-fx-area-in' : ''}"/>`;
-    }
-    const drawCls = o.animate ? ' viz-fx-draw' : '';
-    const drawStyle = o.animate ? ` style="--viz-len:${Math.round(pw + ph)}"` : '';
-    const path = `<path d="${d}" class="viz-line${drawCls}" stroke="${color}"${drawStyle}/>`;
-    const title = s.name ? `<title>${esc(s.name)}</title>` : '';
-    return `<g>${title}${area}${path}</g>`;
-  }).join('');
-
-  return frame(`${svgOpen(w, h, o)}<defs>${defs}</defs>${grid}${body}</svg>`, o);
-}
 
 /* ── Sparkline (inline, no axes) ───────────────────────────── */
-/** values: number[] — tiny trend for tables/rows */
+/** values: number[], a tiny trend for tables and rows */
 export function spark(values = [], o = {}) {
   if (!values.length) return '';
   const w = o.width || 90, h = o.height || 24, pad = 2;
-  const min = Math.min(...values), max = Math.max(...values);
-  const xAt = (i) => pad + (values.length <= 1 ? 0 : i / (values.length - 1)) * (w - pad * 2);
+  const vals = values.map(numOrNull);
+  const known = vals.filter((v) => v != null);
+  if (!known.length) return '';
+  const min = Math.min(...known), max = Math.max(...known);
+  const xAt = (i) => pad + (vals.length <= 1 ? 0 : i / (vals.length - 1)) * (w - pad * 2);
   const yAt = (v) => pad + (max === min ? 0.5 : 1 - (v - min) / (max - min)) * (h - pad * 2);
-  const d = values.map((v, i) => `${i ? 'L' : 'M'}${xAt(i).toFixed(1)} ${yAt(v).toFixed(1)}`).join(' ');
+  let pen = false;
+  const d = vals.map((v, i) => { if (v == null) { pen = false; return ''; } const s = `${pen ? 'L' : 'M'}${xAt(i).toFixed(1)} ${yAt(v).toFixed(1)}`; pen = true; return s; }).filter(Boolean).join(' ');
   const color = o.color || 'var(--viz-accent-bright)';
-  const last = `<circle cx="${xAt(values.length - 1).toFixed(1)}" cy="${yAt(values[values.length - 1]).toFixed(1)}" r="1.8" fill="${color}"/>`;
-  return `<svg class="viz-svg" style="width:${w}px;max-width:100%;display:inline-block;vertical-align:middle" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.ariaLabel || 'trend')}"><path d="${d}" class="viz-line" stroke="${color}" style="stroke-width:1.4"/>${last}</svg>`;
+  const li = vals.length - 1 - [...vals].reverse().findIndex((v) => v != null);
+  const last = `<circle cx="${xAt(li).toFixed(1)}" cy="${yAt(vals[li]).toFixed(1)}" r="1.8" fill="${esc(color)}"/>`;
+  return `<svg class="viz-svg viz-spark" data-viz="2" style="width:${w}px;max-width:100%;display:inline-block;vertical-align:middle" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.ariaLabel || 'trend')}"><path d="${d}" class="viz-line" stroke="${esc(color)}" style="stroke-width:1.4"/>${last}</svg>`;
 }
 
 /* ── Radar / spider ────────────────────────────────────────── */
 /** axes: [{key,label}] ; series: [{name?,color?,values: {key:0..max} | number[]}] */
 export function radar(axes = [], series = [], o = {}) {
-  if (!axes.length) return frame(empty('No axes', { frame: false }), o);
+  if (!axes.length) return frame(empty('No axes', { frame: false, lang: o.lang }), o);
   const list = Array.isArray(series) ? series : [series];
   const size = o.size || 300, cx = size / 2, cy = size / 2, r = o.r || 92;
   const max = o.max || 100, n = axes.length, pad = 56;
+  const interactive = o.marks !== false;
   const angle = (i) => (Math.PI * 2 * i) / n - Math.PI / 2;
-  const pt = (i, frac) => [cx + Math.cos(angle(i)) * r * frac, cy + Math.sin(angle(i)) * r * frac];
+  const pt = (i, f) => [cx + Math.cos(angle(i)) * r * f, cy + Math.sin(angle(i)) * r * f];
+  const val = (s, a, i) => (Array.isArray(s.values) ? s.values[i] : (s.values || {})[a.key]);
 
-  const rings = [0.25, 0.5, 0.75, 1].map((f) =>
-    `<polygon class="viz-radar-ring" points="${axes.map((_, i) => pt(i, f).map((v) => v.toFixed(1)).join(',')).join(' ')}"/>`
-  ).join('');
-  const spokes = axes.map((_, i) => {
-    const [x, y] = pt(i, 1);
-    return `<line class="viz-radar-spoke" x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`;
-  }).join('');
+  const rings = [0.25, 0.5, 0.75, 1].map((f) => `<polygon class="viz-radar-ring" points="${axes.map((_, i) => pt(i, f).map((v) => v.toFixed(1)).join(',')).join(' ')}"/>`).join('');
+  const spokes = axes.map((_, i) => { const [x, y] = pt(i, 1); return `<line class="viz-radar-spoke" x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join('');
   const labels = axes.map((a, i) => {
-    const [x, y] = pt(i, 1.16);
-    const dx = x - cx;
-    const anchor = dx > 8 ? 'start' : dx < -8 ? 'end' : 'middle';
-    return `<text class="viz-label" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anchor}" dominant-baseline="middle">${esc(a.label)}</text>`;
+    const [x, y] = pt(i, 1.16), dx = x - cx;
+    return `<text class="viz-label" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${dx > 8 ? 'start' : dx < -8 ? 'end' : 'middle'}" dominant-baseline="middle">${esc(a.label)}</text>`;
   }).join('');
   const areas = list.map((s, si) => {
     const color = s.color || paletteAt(si, o.colors);
-    const val = (a, i) => (Array.isArray(s.values) ? s.values[i] : (s.values[a.key] || 0));
-    const pts = axes.map((a, i) => pt(i, clamp(val(a, i) / max, 0, 1)).map((v) => v.toFixed(1)).join(',')).join(' ');
-    return `<polygon class="viz-radar-area" points="${pts}" fill="${color}" stroke="${color}"><title>${esc(s.name || 'series')}</title></polygon>`;
+    const pts = axes.map((a, i) => pt(i, clamp((Number(val(s, a, i)) || 0) / max, 0, 1)).map((v) => v.toFixed(1)).join(',')).join(' ');
+    const t = interactive ? '' : `<title>${esc(s.name || 'series')}</title>`;
+    return `<polygon class="viz-radar-area" points="${pts}" fill="${esc(color)}" stroke="${esc(color)}">${t}</polygon>`;
   }).join('');
-
-  return frame(`<svg class="viz-svg" viewBox="${-pad} 0 ${size + pad * 2} ${size}" role="img" aria-label="${esc(o.ariaLabel || o.title || 'radar chart')}">${rings}${spokes}${areas}${labels}</svg>`, o);
+  const marks = !interactive ? '' : axes.map((a, i) => {
+    const rows = list.map((s, si) => {
+      const v = numOrNull(val(s, a, i));
+      return [s.name || `#${si + 1}`, v == null ? unknownWord(o) : formatValue(v, o.format || 'number', o), s.color || paletteAt(si, o.colors), v];
+    });
+    const dots = rows.filter((rw) => rw[3] != null).map((rw) => { const [x, y] = pt(i, clamp(rw[3] / max, 0, 1)); return `<circle class="viz-pt" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="${esc(rw[2])}"/>`; }).join('');
+    const [hx, hy] = pt(i, 1);
+    const tip = rows.length === 1 ? { t: a.label, v: rows[0][1] } : { t: a.label, r: rows.map((rw) => rw.slice(0, 3)) };
+    const aria = `${a.label}: ${rows.map((rw) => (rows.length === 1 ? rw[1] : `${rw[0]} ${rw[1]}`)).join(', ')}`;
+    return `${markOpen('viz-spoke', aria, tip, i === 0)}<line class="viz-hit viz-hit--spoke" x1="${cx}" y1="${cy}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}"/>${dots}</g>`;
+  }).join('');
+  const role = interactive ? 'role="group" aria-roledescription="chart"' : 'role="img"';
+  return frame(`<svg class="viz-svg" data-viz="2" viewBox="${-pad} 0 ${size + pad * 2} ${size}" ${role} aria-label="${esc(o.ariaLabel || o.title || 'radar chart')}">${rings}${spokes}${areas}${labels}${marks}</svg>`, o);
 }
 
 /* ── Gauge / progress ring / band meter ────────────────────── */
@@ -235,111 +102,137 @@ export function radar(axes = [], series = [], o = {}) {
 export function gauge(value = 0, o = {}) {
   const max = o.max || 100, v = clamp(value, 0, max), frac = v / max;
   const color = o.color || 'var(--viz-accent-bright)';
+  const label = o.format ? formatValue(v, o.format, o) : fmt(v);
   if (o.mode === 'band') {
     const w = o.width || 260, h = o.height || 34, pad = 6, bw = w - pad * 2;
     const bands = o.bands || [{ to: max, color }];
     let acc = 0;
     const segs = bands.map((b) => {
       const x0 = pad + (acc / max) * bw, x1 = pad + (b.to / max) * bw; acc = b.to;
-      return `<rect x="${x0.toFixed(1)}" y="${(h / 2 - 4).toFixed(1)}" width="${(x1 - x0).toFixed(1)}" height="8" fill="${b.color}" opacity=".55"/>`;
+      return `<rect x="${x0.toFixed(1)}" y="${(h / 2 - 4).toFixed(1)}" width="${(x1 - x0).toFixed(1)}" height="8" fill="${esc(b.color)}" opacity=".55"/>`;
     }).join('');
     const mx = pad + frac * bw;
     const marker = `<line x1="${mx.toFixed(1)}" y1="4" x2="${mx.toFixed(1)}" y2="${h - 12}" stroke="var(--viz-ink)" stroke-width="2"/><circle cx="${mx.toFixed(1)}" cy="4" r="3" fill="var(--viz-ink)"/>`;
-    return frame(`${svgOpen(w, h, o)}${segs}${marker}<text class="viz-tick" x="${pad}" y="${h - 1}">0</text><text class="viz-tick" x="${w - pad}" y="${h - 1}" text-anchor="end">${fmt(max)}</text></svg>`, o);
+    const top = o.format ? formatValue(max, o.format, o) : fmt(max);
+    const aria = o.ariaLabel || `${o.title || 'gauge'} ${label} of ${top}`;
+    return frame(`${svgOpen(w, h, { ...o, ariaLabel: aria })}${segs}${marker}<text class="viz-tick" x="${pad}" y="${h - 1}">0</text><text class="viz-tick" x="${w - pad}" y="${h - 1}" text-anchor="end">${esc(top)}</text></svg>`, o);
   }
-  // ring mode (270° arc)
   const size = o.size || 120, cx = size / 2, cy = size / 2, rr = size / 2 - 12;
   const start = 135, sweep = 270;
   const polar = (deg) => [cx + rr * Math.cos((deg * Math.PI) / 180), cy + rr * Math.sin((deg * Math.PI) / 180)];
-  const arc = (fromDeg, toDeg) => {
-    const [x0, y0] = polar(fromDeg), [x1, y1] = polar(toDeg);
-    const large = (toDeg - fromDeg) % 360 > 180 ? 1 : 0;
-    return `M${x0.toFixed(1)} ${y0.toFixed(1)} A${rr} ${rr} 0 ${large} 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`;
+  const arc = (a0, a1) => {
+    const [x0, y0] = polar(a0), [x1, y1] = polar(a1);
+    return `M${x0.toFixed(1)} ${y0.toFixed(1)} A${rr} ${rr} 0 ${(a1 - a0) % 360 > 180 ? 1 : 0} 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`;
   };
-  const track = `<path class="viz-gauge-track" d="${arc(start, start + sweep)}" stroke-width="${o.thickness || 10}"/>`;
-  const drawCls = o.animate ? ' viz-fx-draw' : '';
-  const len = (sweep / 360) * 2 * Math.PI * rr;
-  const style = o.animate ? ` style="--viz-len:${Math.round(len)}"` : '';
-  const fill = frac > 0 ? `<path class="viz-gauge-fill${drawCls}" d="${arc(start, start + sweep * frac)}" stroke="${color}" stroke-width="${o.thickness || 10}"${style}/>` : '';
-  const label = `<text class="viz-gauge-value" x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="${size / 5}">${o.label != null ? esc(o.label) : fmt(v)}</text>`;
-  return frame(`<svg class="viz-svg" style="max-width:${size}px;margin:0 auto" viewBox="0 0 ${size} ${size}" role="img" aria-label="${esc(o.ariaLabel || o.title || 'gauge')} ${fmt(v)} of ${fmt(max)}">${track}${fill}${label}</svg>`, o);
+  const th = o.thickness || 10;
+  const track = `<path class="viz-gauge-track" d="${arc(start, start + sweep)}" stroke-width="${th}"/>`;
+  const fill = frac > 0 ? `<path class="viz-gauge-fill${o.animate ? ' viz-fx-draw' : ''}" d="${arc(start, start + sweep * frac)}" stroke="${esc(color)}" stroke-width="${th}"${o.animate ? ' pathLength="1"' : ''}/>` : '';
+  const text = `<text class="viz-gauge-value" x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="${size / 5}">${o.label != null ? esc(o.label) : esc(label)}</text>`;
+  return frame(`<svg class="viz-svg" data-viz="2" style="max-width:${size}px;margin:0 auto" viewBox="0 0 ${size} ${size}" role="img" aria-label="${esc(o.ariaLabel || `${o.title || 'gauge'} ${label} of ${o.format ? formatValue(max, o.format, o) : fmt(max)}`)}">${track}${fill}${text}</svg>`, o);
 }
 
 /* ── Donut / distribution ──────────────────────────────────── */
-/** segments: [{label, value, color?}] */
+const warned = new Set();
+/** segments: [{label, value, color?}] ; opts.legend (with values and shares unless legendValues:false),
+ *  opts.center. One slice over 90% logs a console warning once and sets data-viz-warn="dominant". */
 export function donut(segments = [], o = {}) {
   const segs = segments.filter((s) => s.value > 0);
-  if (!segs.length) return frame(empty('No data', { frame: false }), o);
+  if (!segs.length) return frame(empty('No data', { frame: false, lang: o.lang }), o);
   const size = o.size || 140, cx = size / 2, cy = size / 2;
   const rr = size / 2 - 8, thick = o.thickness || 16, cr = 2 * Math.PI * rr;
   const total = segs.reduce((a, s) => a + s.value, 0);
+  const interactive = o.marks !== false;
+  const fmtName = o.format || 'number';
+  const colorOf = (s, i) => s.color || (o.colorBy === 'key' ? colorFor(s.key ?? s.label) : paletteAt(i, o.colors));
+  const big = segs.find((s) => s.value / total > 0.9);
+  if (big && o.warn !== false) {
+    const k = `${o.title || o.ariaLabel || ''}|${big.label}`;
+    if (!warned.has(k) && typeof console !== 'undefined') {
+      warned.add(k);
+      console.warn(`viz.donut: "${big.label}" is ${formatValue(big.value / total, 'share', o)} of "${o.title || o.ariaLabel || 'the ring'}"; one slice over 90% reads better as a bar or a sentence.`);
+    }
+  }
   let acc = 0;
   const ring = segs.map((s, i) => {
     const frac = s.value / total, dash = frac * cr, off = acc * cr; acc += frac;
-    const color = s.color || paletteAt(i, o.colors);
-    return `<circle class="viz-donut-seg" cx="${cx}" cy="${cy}" r="${rr}" fill="none" stroke="${color}" stroke-width="${thick}" stroke-dasharray="${dash.toFixed(2)} ${(cr - dash).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"><title>${esc(s.label)}: ${fmt(s.value)} (${Math.round(frac * 100)}%)</title></circle>`;
+    const color = colorOf(s, i);
+    const text = `${formatValue(s.value, fmtName, o)} (${formatValue(frac, 'share', o)})`;
+    const circle = `<circle class="viz-donut-seg" cx="${cx}" cy="${cy}" r="${rr}" fill="none" stroke="${esc(color)}" stroke-width="${thick}" stroke-dasharray="${dash.toFixed(2)} ${(cr - dash).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})">${interactive ? '' : `<title>${esc(s.label)}: ${esc(text)}</title>`}</circle>`;
+    return interactive ? `${markOpen('viz-arc', `${s.label}: ${text}`, { t: s.label, v: text }, i === 0)}${circle}</g>` : circle;
   }).join('');
-  const center = o.center != null
-    ? `<text class="viz-donut-center" x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="${size / 6}">${esc(o.center)}</text>`
-    : '';
-  const legend = o.legend
-    ? `<div class="viz-stats" style="margin-top:8px">${segs.map((s, i) => `<div class="viz-stat" style="flex:0 1 auto;flex-direction:row;align-items:center;gap:6px;padding:4px 8px"><span style="width:8px;height:8px;border-radius:2px;background:${s.color || paletteAt(i, o.colors)}"></span><span class="viz-stat__label" style="letter-spacing:0">${esc(s.label)}</span></div>`).join('')}</div>`
-    : '';
-  return frame(`<svg class="viz-svg" style="max-width:${size}px;margin:0 auto" viewBox="0 0 ${size} ${size}" role="img" aria-label="${esc(o.ariaLabel || o.title || 'distribution')}">${ring}${center}</svg>${legend}`, o);
+  const center = o.center != null ? `<text class="viz-donut-center" x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="${size / 6}">${esc(o.center)}</text>` : '';
+  const key = o.legend ? legend(segs.map((s, i) => ({
+    label: s.label, color: colorOf(s, i),
+    ...(o.legendValues === false ? {} : { value: s.value, share: s.value / total }),
+  })), { format: fmtName, lang: o.lang, label: o.legendLabel }) : '';
+  const role = interactive ? 'role="group" aria-roledescription="chart"' : 'role="img"';
+  const warnAttr = big ? ' data-viz-warn="dominant"' : '';
+  return frame(`<svg class="viz-svg" data-viz="2" style="max-width:${size}px;margin:0 auto" viewBox="0 0 ${size} ${size}" ${role} aria-label="${esc(o.ariaLabel || o.title || 'distribution')}"${warnAttr}>${ring}${center}</svg>${key}`, { ...o, warn: big ? 'dominant' : o.warn === false ? '' : undefined });
 }
 
 /* ── Heatmap / density grid ────────────────────────────────── */
-/** grid: number[][] (rows of values) ; opts.max, opts.cols, opts.rows (labels) */
+/** grid: number[][] (rows of values, null for unknown) ; opts.max, opts.cols, opts.rows (labels) */
 export function heatmap(grid = [], o = {}) {
-  if (!grid.length) return frame(empty('No data', { frame: false }), o);
+  if (!grid.length) return frame(empty('No data', { frame: false, lang: o.lang }), o);
   const rows = grid.length, cols = Math.max(...grid.map((r) => r.length));
   const cell = o.cell || 16, gap = o.gap || 2, lp = o.rows ? 34 : 0, tp = o.cols ? 14 : 0;
   const w = lp + cols * (cell + gap), h = tp + rows * (cell + gap);
-  const max = o.max || Math.max(1, ...grid.flat());
+  const max = o.max || Math.max(1, ...grid.flat().filter((v) => v != null));
+  const interactive = o.marks !== false;
   const ramp = ['var(--viz-heat-0)', 'var(--viz-heat-1)', 'var(--viz-heat-2)', 'var(--viz-heat-3)', 'var(--viz-heat-4)'];
-  const colorFor = (v) => (v == null ? 'transparent' : ramp[clamp(Math.round((v / max) * (ramp.length - 1)), 0, ramp.length - 1)]);
-  let cells = '';
+  const tone = (v) => (v == null ? 'transparent' : ramp[clamp(Math.round((v / max) * (ramp.length - 1)), 0, ramp.length - 1)]);
+  let cells = '', first = true;
   grid.forEach((row, r) => {
-    row.forEach((v, c) => {
+    row.forEach((raw, c) => {
+      const v = numOrNull(raw);
       const x = lp + c * (cell + gap), y = tp + r * (cell + gap);
-      const label = `${o.rows ? o.rows[r] + ' · ' : ''}${o.cols ? o.cols[c] + ': ' : ''}${fmt(v)}`;
-      cells += `<rect class="viz-cell" x="${x}" y="${y}" width="${cell}" height="${cell}" rx="2" fill="${colorFor(v)}"><title>${esc(label)}</title></rect>`;
+      const name = `${o.rows ? `${o.rows[r]} · ` : ''}${o.cols && o.cols[c] != null ? o.cols[c] : ''}`.replace(/ · $/, '');
+      const text = v == null ? unknownWord(o) : formatValue(v, o.format || 'number', o);
+      const rect = `<rect class="viz-cell${v == null ? ' viz-cell--unknown' : ''}" x="${x}" y="${y}" width="${cell}" height="${cell}" rx="2" fill="${tone(v)}">${interactive ? '' : `<title>${esc(name ? `${name}: ${text}` : text)}</title>`}</rect>`;
+      if (!interactive) { cells += rect; return; }
+      cells += `${markOpen('viz-heat', name ? `${name}: ${text}` : text, name ? { t: name, v: text } : { v: text }, first)}${rect}</g>`;
+      first = false;
     });
   });
-  const rowLabels = o.rows ? o.rows.map((l, r) => `<text class="viz-tick" x="${lp - 5}" y="${tp + r * (cell + gap) + cell / 2 + 3}" text-anchor="end">${esc(l)}</text>`).join('') : '';
+  const rowLabels = o.rows ? o.rows.map((l, r) => `<text class="viz-tick" x="${lp - 5}" y="${tp + r * (cell + gap) + cell / 2}" text-anchor="end" dominant-baseline="central">${esc(l)}</text>`).join('') : '';
   const colLabels = o.cols ? o.cols.map((l, c) => `<text class="viz-tick" x="${lp + c * (cell + gap) + cell / 2}" y="${tp - 4}" text-anchor="middle">${esc(l)}</text>`).join('') : '';
-  return frame(`${svgOpen(w, h, o)}${rowLabels}${colLabels}${cells}</svg>`, o);
+  return frame(`${svgOpen(w, h, o, '', interactive)}${rowLabels}${colLabels}${cells}</svg>`, o);
 }
 
 /* ── Timeline / stem / event strip ─────────────────────────── */
 /** events: [{t, value, color?, label?, marked?}] ; opts.from,to (ms), opts.ref{value,label}, opts.maxValue */
 export function timeline(events = [], o = {}) {
-  if (!events.length) return frame(empty('No events', { frame: false }), o);
+  if (!events.length) return frame(empty('No events', { frame: false, lang: o.lang }), o);
   const w = o.width || 300, h = o.height || 78;
   const padX = 6, padTop = 8, baseY = h - 16, pw = w - padX * 2;
   const to = o.to || Date.now();
   const from = o.from || Math.min(...events.map((e) => e.t));
   const span = Math.max(1, to - from);
   const maxV = o.maxValue || Math.max(1, ...events.map((e) => e.value));
+  const interactive = o.marks !== false;
   const xAt = (t) => padX + ((t - from) / span) * pw;
   const yAt = (v) => baseY - (v / maxV) * (baseY - padTop);
-
+  let first = true;
   const stems = events.filter((e) => e.t >= from && e.t <= to).map((e) => {
     const x = xAt(e.t).toFixed(1), y = yAt(e.value).toFixed(1);
     const color = e.color || 'var(--viz-accent-bright)';
-    const halo = e.marked ? `<circle cx="${x}" cy="${y}" r="4.5" fill="none" stroke="${color}" stroke-width="1.4" opacity=".9"/>` : '';
-    return `<line x1="${x}" y1="${baseY}" x2="${x}" y2="${y}" stroke="${color}" stroke-width="2" stroke-linecap="round" opacity=".85"/><circle cx="${x}" cy="${y}" r="2.6" fill="${color}"><title>${esc(e.label || fmt(e.value))}</title></circle>${halo}`;
+    const text = e.label || formatValue(e.value, o.format || 'number', o);
+    const halo = e.marked ? `<circle cx="${x}" cy="${y}" r="4.5" fill="none" stroke="${esc(color)}" stroke-width="1.4" opacity=".9"/>` : '';
+    const body = `<line x1="${x}" y1="${baseY}" x2="${x}" y2="${y}" stroke="${esc(color)}" stroke-width="2" stroke-linecap="round" opacity=".85"/><circle class="viz-pt viz-pt--on" cx="${x}" cy="${y}" r="2.6" fill="${esc(color)}">${interactive ? '' : `<title>${esc(text)}</title>`}</circle>${halo}`;
+    if (!interactive) return body;
+    const out = `${markOpen('viz-stem', text, { v: text }, first)}${body}</g>`;
+    first = false;
+    return out;
   }).join('');
-
   let ref = '';
   if (o.ref) {
     const ry = yAt(o.ref.value).toFixed(1);
     ref = `<line class="viz-ref" x1="${padX}" y1="${ry}" x2="${w - padX}" y2="${ry}"/>${o.ref.label ? `<text class="viz-tick" x="${w - padX}" y="${Number(ry) - 3}" text-anchor="end">${esc(o.ref.label)}</text>` : ''}`;
   }
-  return frame(`${svgOpen(w, h, o, 'preserveAspectRatio="none"')}<line class="viz-axis" x1="${padX}" y1="${baseY}" x2="${w - padX}" y2="${baseY}"/>${ref}${stems}</svg>`, o);
+  return frame(`${svgOpen(w, h, o, 'preserveAspectRatio="none"', interactive)}<line class="viz-axis" x1="${padX}" y1="${baseY}" x2="${w - padX}" y2="${baseY}"/>${ref}${stems}</svg>`, o);
 }
 
-/* ── Dense series (canvas) — ports hwinfo-viewer decimation ─────── */
+/* ── Dense series (canvas), ports hwinfo-viewer decimation ─── */
 /** Draw a min/max-per-pixel decimated line into a <canvas> for huge series. */
 export function canvasLine(canvas, values, o = {}) {
   if (!canvas || !values?.length) return;
@@ -359,10 +252,7 @@ export function canvasLine(canvas, values, o = {}) {
   const n = values.length, cols = Math.max(1, Math.floor(pw));
   ctx.beginPath();
   if (n <= cols) {
-    values.forEach((v, i) => {
-      const x = pad.l + (n <= 1 ? 0 : (i / (n - 1)) * pw);
-      i ? ctx.lineTo(x, yAt(v)) : ctx.moveTo(x, yAt(v));
-    });
+    values.forEach((v, i) => { const x = pad.l + (n <= 1 ? 0 : (i / (n - 1)) * pw); i ? ctx.lineTo(x, yAt(v)) : ctx.moveTo(x, yAt(v)); });
   } else {
     const bucket = n / cols;
     for (let b = 0; b < cols; b++) {
@@ -379,8 +269,16 @@ export function canvasLine(canvas, values, o = {}) {
   ctx.stroke();
 }
 
+export {
+  bars, line,
+  frame, stateBlock, empty, error, skeleton, statGrid, delta, ranked, levers, legend,
+  PALETTE, colorFor, formatValue, formatSigned, niceTicks, axisFormatter, truncateMiddle, langOf,
+};
+export const format = formatValue;
+
 export const viz = {
-  statGrid, bars, line, spark, radar, gauge, donut, heatmap, timeline,
-  canvasLine, skeleton, empty, error,
+  statGrid, bars, line, spark, radar, gauge, donut, heatmap, timeline, canvasLine,
+  skeleton, empty, error, stateBlock, delta, ranked, levers, legend,
+  format: formatValue, formatSigned, niceTicks, axisFormatter, colorFor, truncateMiddle,
 };
 export default viz;
